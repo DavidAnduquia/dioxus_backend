@@ -7,6 +7,7 @@ use thiserror::Error;
 use crate::models::ApiResponse;
 
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum AppError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),

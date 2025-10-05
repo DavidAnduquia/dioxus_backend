@@ -41,6 +41,10 @@ bcrypt = "0.15"
 # JWT tokens
 jsonwebtoken = "9.0"
 
+# OpenAPI/Swagger documentation
+utoipa = { version = "4.0", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "6.0", features = ["axum"] }
+
 [dev-dependencies]
 # Testing
 tokio-test = "0.4"

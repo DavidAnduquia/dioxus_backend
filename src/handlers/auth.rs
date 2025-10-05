@@ -13,6 +13,16 @@ use crate::{
     utils::errors::AppError,
 };
 
+#[utoipa::path(
+    post,
+    path = "/auth/register",
+    request_body = CreateUserRequest,
+    responses(
+        (status = 201, description = "Usuario registrado exitosamente", body = ApiResponse<AuthResponse>),
+        (status = 400, description = "Datos inválidos o usuario ya existe"),
+        (status = 500, description = "Error interno del servidor")
+    )
+)]
 pub async fn register(
     State(state): State<AppState>,
     Json(payload): Json<CreateUserRequest>,
@@ -60,6 +70,17 @@ pub async fn register(
     Ok(Json(ApiResponse::success(response)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Login exitoso", body = ApiResponse<AuthResponse>),
+        (status = 401, description = "Credenciales inválidas"),
+        (status = 400, description = "Datos inválidos"),
+        (status = 500, description = "Error interno del servidor")
+    )
+)]
 pub async fn login(
     State(state): State<AppState>,
     Json(payload): Json<LoginRequest>,

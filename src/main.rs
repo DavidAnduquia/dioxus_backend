@@ -1,4 +1,3 @@
-use axum::Router;
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -13,7 +12,7 @@ mod routes;
 mod utils;
 
 use config::Config;
-use routes::create_routes;
+use routes::create_app;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,8 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Build our application with routes and middleware
-    let app = Router::new()
-        .merge(create_routes())
+    let app = create_app()
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -54,11 +52,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Run the server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
-    tracing::info!("Server running on http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
 
     Ok(())
 }
-
