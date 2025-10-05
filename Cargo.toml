@@ -1,0 +1,62 @@
+[package]
+name = "rust-api-backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Web framework
+axum = "0.7"
+tokio = { version = "1.0", features = ["rt-multi-thread", "net", "macros"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database (SQLx with PostgreSQL)
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono"] }
+
+# UUID and time handling
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Environment variables
+dotenvy = "0.15"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# Password hashing
+bcrypt = "0.15"
+
+# JWT tokens
+jsonwebtoken = "9.0"
+
+[dev-dependencies]
+# Testing
+tokio-test = "0.4"
+
+[profile.dev]
+opt-level = 0
+debug = true
+panic = "abort"  # Reduce binary size
+codegen-units = 256
+lto = false
+incremental = true
+
+[profile.release]
+opt-level = 3
+debug = false
+panic = "abort"  # Reduce binary size
+codegen-units = 1
+lto = true
+strip = true  # Remove debug symbols

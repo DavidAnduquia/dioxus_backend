@@ -1,0 +1,68 @@
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Json, Response},
+};
+use thiserror::Error;
+
+use crate::models::ApiResponse;
+
+#[derive(Error, Debug)]
+pub enum AppError {
+    #[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
+
+    #[error("Validation error: {0}")]
+    Validation(#[from] validator::ValidationErrors),
+
+    #[error("JWT error: {0}")]
+    Jwt(#[from] jsonwebtoken::errors::Error),
+
+    #[error("BCrypt error: {0}")]
+    BCrypt(#[from] bcrypt::BcryptError),
+
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Internal server error: {0}")]
+    InternalServerError(String),
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, message) = match self {
+            AppError::Database(ref e) => {
+                tracing::error!("Database error: {:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            }
+            AppError::Validation(ref e) => {
+                let message = format!("Validation error: {}", e);
+                (StatusCode::BAD_REQUEST, message)
+            }
+            AppError::Jwt(_) => (StatusCode::UNAUTHORIZED, "Invalid token".to_string()),
+            AppError::BCrypt(ref e) => {
+                tracing::error!("BCrypt error: {:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            }
+            AppError::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
+            AppError::Unauthorized(message) => (StatusCode::UNAUTHORIZED, message),
+            AppError::Forbidden(message) => (StatusCode::FORBIDDEN, message),
+            AppError::NotFound(message) => (StatusCode::NOT_FOUND, message),
+            AppError::InternalServerError(message) => {
+                tracing::error!("Internal server error: {}", message);
+                (StatusCode::INTERNAL_SERVER_ERROR, message)
+            }
+        };
+
+        let body = Json(ApiResponse::<()>::error(message));
+        (status, body).into_response()
+    }
+}
