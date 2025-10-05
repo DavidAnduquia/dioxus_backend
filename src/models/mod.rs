@@ -51,9 +51,11 @@ pub struct AuthResponse {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
+    #[schema(value_type = String, format = "uuid")]
     pub id: Uuid,
     pub email: String,
     pub name: String,
+    #[schema(value_type = String, format = "date-time")]
     pub created_at: DateTime<Utc>,
 }
 

@@ -13,7 +13,7 @@ use crate::{
     get,
     path = "/users/me",
     responses(
-        (status = 200, description = "Usuario actual", body = ApiResponse<UserResponse>),
+        (status = 200, description = "Usuario actual", body = UserResponse),
         (status = 401, description = "No autorizado"),
         (status = 500, description = "Error interno del servidor")
     ),

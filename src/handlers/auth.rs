@@ -18,7 +18,7 @@ use crate::{
     path = "/auth/register",
     request_body = CreateUserRequest,
     responses(
-        (status = 201, description = "Usuario registrado exitosamente", body = ApiResponse<AuthResponse>),
+        (status = 201, description = "Usuario registrado exitosamente", body = AuthResponse),
         (status = 400, description = "Datos inválidos o usuario ya existe"),
         (status = 500, description = "Error interno del servidor")
     )
@@ -75,7 +75,7 @@ pub async fn register(
     path = "/auth/login",
     request_body = LoginRequest,
     responses(
-        (status = 200, description = "Login exitoso", body = ApiResponse<AuthResponse>),
+        (status = 200, description = "Login exitoso", body = AuthResponse),
         (status = 401, description = "Credenciales inválidas"),
         (status = 400, description = "Datos inválidos"),
         (status = 500, description = "Error interno del servidor")
