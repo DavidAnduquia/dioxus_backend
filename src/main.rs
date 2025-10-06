@@ -5,10 +5,12 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod config;
 mod database;
+mod entities;
 mod handlers;
 mod middleware;
 mod models;
 mod routes;
+mod services;
 mod utils;
 
 use config::Config;
@@ -33,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_pool = database::create_pool(&config.database_url).await?;
 
     // Run migrations
-    database::run_migrations(&db_pool).await?;
+    //database::run_migrations(&db_pool).await?;
 
     // Create application state
     let app_state = models::AppState {

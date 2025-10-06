@@ -7,6 +7,8 @@ use validator::Validate;
 
 use crate::config::Config;
 
+pub mod rol;
+
 // Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {

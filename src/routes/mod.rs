@@ -10,6 +10,8 @@ use utoipa::OpenApi;
 
 use crate::{handlers, models::AppState};
 
+pub mod roles;
+
 #[derive(Deserialize)]
 #[allow(dead_code)]
 struct OAuth2TokenRequest {
@@ -53,6 +55,7 @@ pub fn create_routes() -> Router<AppState> {
 pub fn create_app() -> Router<AppState> {
     Router::new()
         .merge(create_routes())
+        .merge(roles::roles_routes())  // Agregar rutas de roles
         .route("/api-docs/openapi.json", get(serve_openapi_spec))
         .route("/swagger-ui", get(serve_swagger_ui))
         .route("/swagger-ui/", get(serve_swagger_ui))
