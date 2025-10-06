@@ -4,7 +4,9 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
+use jsonwebtoken::{EncodingKey, DecodingKey};
 
+#[allow(dead_code)]
 use crate::config::Config;
 
 pub mod rol;
@@ -13,7 +15,10 @@ pub mod rol;
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
+    #[allow(dead_code)]
     pub config: Config,
+    pub jwt_encoding_key: EncodingKey,
+    pub jwt_decoding_key: DecodingKey,
 }
 
 // User models

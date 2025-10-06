@@ -104,15 +104,9 @@ async fn oauth2_token_endpoint(
     Form(form): Form<OAuth2TokenRequest>,
 ) -> Result<Json<OAuth2TokenResponse>, Json<Value>> {
     use bcrypt::verify;
-    use jsonwebtoken::{encode, EncodingKey, Header};
+    use jsonwebtoken::{encode, Header};
     use crate::models::{Claims, User};
-    
-    // Log para debug
-    println!("OAuth2 Token Request:");
-    println!("  grant_type: {}", form.grant_type);
-    println!("  username: {}", form.username);
-    println!("  password length: {}", form.password.len());
-    
+
     // Validar grant_type
     if form.grant_type != "password" {
         return Err(Json(json!({
@@ -120,8 +114,8 @@ async fn oauth2_token_endpoint(
             "error_description": "Only 'password' grant type is supported"
         })));
     }
-    
-    // Buscar usuario por email (username en OAuth2 es el email)
+
+    // Buscar usuario por email
     let user = sqlx::query_as::<_, User>(
         "SELECT id, email, password_hash, name, created_at, updated_at FROM users WHERE email = $1"
     )
@@ -129,132 +123,112 @@ async fn oauth2_token_endpoint(
     .fetch_optional(&state.db)
     .await
     .map_err(|e| {
-        println!("Database error: {:?}", e);
+        tracing::error!("Database error in OAuth2 token endpoint: {:?}", e);
         Json(json!({
             "error": "server_error",
             "error_description": "Database error"
         }))
     })?;
-    
+
     let user = match user {
-        Some(user) => {
-            println!("User found: {}", user.email);
-            user
-        },
+        Some(user) => user,
         None => {
-            println!("User not found: {}", form.username);
             return Err(Json(json!({
                 "error": "invalid_grant",
                 "error_description": "Invalid username or password"
             })));
         }
     };
-    
+
     // Verificar password
-    println!("Verifying password...");
-    println!("  Password ingresado (texto plano): {}", form.password);
-    println!("  Hash almacenado en DB: {}", user.password_hash);
-    
-    // Probar passwords comunes para debug
-    let common_passwords = ["admin123", "password", "Password123", "test123", "123456"];
-    println!("  Probando passwords comunes:");
-    for pwd in &common_passwords {
-        let result = verify(pwd, &user.password_hash).unwrap_or(false);
-        println!("    '{}' -> {}", pwd, if result { "✓ CORRECTO" } else { "✗" });
-    }
-    
     let password_valid = verify(&form.password, &user.password_hash)
         .map_err(|e| {
-            println!("Password verification error: {:?}", e);
+            tracing::error!("Password verification error: {:?}", e);
             Json(json!({
                 "error": "server_error",
                 "error_description": "Password verification failed"
             }))
         })?;
-    
-    println!("  Resultado de verify(): {}", password_valid);
-    
+
     if !password_valid {
-        println!("Password invalid for user: {}", user.email);
         return Err(Json(json!({
             "error": "invalid_grant",
             "error_description": "Invalid username or password"
         })));
     }
-    
-    println!("Password valid! Generating token...");
-    
+
     // Generar JWT token
     let now = chrono::Utc::now();
     let exp = now + chrono::Duration::hours(24);
-    
+
     let claims = Claims {
         sub: user.id.to_string(),
         email: user.email.clone(),
         exp: exp.timestamp() as usize,
         iat: now.timestamp() as usize,
     };
-    
+
     let token = encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(state.config.jwt_secret.as_ref()),
+        &state.jwt_encoding_key,
     )
     .map_err(|e| {
-        println!("Token generation error: {:?}", e);
+        tracing::error!("Token generation error: {:?}", e);
         Json(json!({
             "error": "server_error",
             "error_description": "Token generation failed"
         }))
     })?;
-    
-    println!("Token generated successfully!");
-    
+
     Ok(Json(OAuth2TokenResponse {
         access_token: token,
         token_type: "Bearer".to_string(),
-        expires_in: Some(86400), // 24 horas en segundos
+        expires_in: Some(86400),
         refresh_token: None,
         scope: Some("read write".to_string()),
     }))
 }
 
 async fn serve_openapi_spec() -> String {
+    use utoipa::openapi::security::{SecurityScheme, OAuth2, Flow, Password, Scopes};
+
     let mut openapi = ApiDoc::openapi();
-    
-    // Agregar esquemas de seguridad manualmente
-    if openapi.components.is_none() {
-        openapi.components = Some(utoipa::openapi::Components::default());
-    }
-    
-    if let Some(components) = openapi.components.as_mut() {
-        // Bearer Token para uso manual
-        components.add_security_scheme(
-            "bearer_auth",
-            utoipa::openapi::security::SecurityScheme::Http(
-                utoipa::openapi::security::Http::new(utoipa::openapi::security::HttpAuthScheme::Bearer)
-            )
-        );
-        
-        // OAuth2 Password Flow para login automático
-        use utoipa::openapi::security::{OAuth2, Flow, Password, Scopes};
-        
-        let password_flow = Password::new("/auth/token", Scopes::new());
-        let oauth2 = OAuth2::new([Flow::Password(password_flow)]);
-        
-        components.add_security_scheme(
-            "oauth2_password",
-            utoipa::openapi::security::SecurityScheme::OAuth2(oauth2)
-        );
-    }
-    
+
+    // Agregar esquemas de seguridad de manera más eficiente
+    let components = openapi.components.get_or_insert_with(Default::default);
+
+    // Bearer Token para uso manual
+    components.add_security_scheme(
+        "bearer_auth",
+        SecurityScheme::Http(
+            utoipa::openapi::security::Http::new(utoipa::openapi::security::HttpAuthScheme::Bearer)
+        ),
+    );
+
+    // OAuth2 Password Flow para login automático
+    let password_flow = Password::new("/auth/token", Scopes::new());
+    let oauth2 = OAuth2::new([Flow::Password(password_flow)]);
+
+    components.add_security_scheme(
+        "oauth2_password",
+        SecurityScheme::OAuth2(oauth2)
+    );
+
     // Agregar seguridad global
-    openapi.security = Some(vec![
+    let security = vec![
         utoipa::openapi::security::SecurityRequirement::new("bearer_auth", Vec::<String>::new()),
         utoipa::openapi::security::SecurityRequirement::new("oauth2_password", Vec::<String>::new())
-    ]);
-    
-    openapi.to_json().unwrap()
+    ];
+
+    // Crear la estructura OpenAPI modificada de manera más eficiente
+    openapi.components = Some(components.clone());
+    openapi.security = Some(security);
+
+    openapi.to_json().unwrap_or_else(|e| {
+        tracing::error!("Failed to serialize OpenAPI spec: {}", e);
+        "{}".to_string()
+    })
 }
 
 async fn serve_swagger_ui() -> Html<&'static str> {

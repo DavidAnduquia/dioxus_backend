@@ -3,15 +3,16 @@ use std::time::Duration;
 
 pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
     PgPoolOptions::new()
-        .max_connections(3)  // Máximo 3 conexiones (balance entre memoria y concurrencia)
-        .min_connections(1)  // Mantener 1 conexión mínima
-        .acquire_timeout(Duration::from_secs(5))  // Tiempo razonable para adquirir conexión
-        .idle_timeout(Duration::from_secs(300))   // Cerrar conexiones idle después de 5 minutos
-        .max_lifetime(Duration::from_secs(1800))  // Vida máxima de 30 minutos (balance)
+        .max_connections(2)  // Reducir a 2 conexiones máximo para menor memoria
+        .min_connections(0)  // No mantener conexiones mínimas idle
+        .acquire_timeout(Duration::from_secs(3))  // Reducir tiempo de adquisición
+        .idle_timeout(Duration::from_secs(60))   // Cerrar conexiones idle más rápido (1 minuto)
+        .max_lifetime(Duration::from_secs(600))  // Vida máxima más corta (10 minutos)
         .connect(database_url)
         .await
 }
 
+#[allow(dead_code)]
 pub async fn init_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Create schema if it doesn't exist
     sqlx::query("CREATE SCHEMA IF NOT EXISTS rustdema")

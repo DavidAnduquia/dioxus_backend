@@ -3,7 +3,7 @@ use axum::{
     extract::FromRequestParts,
     http::request::Parts,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::{decode, Validation};
 use uuid::Uuid;
 
 use crate::{
@@ -37,7 +37,7 @@ impl FromRequestParts<AppState> for AuthUser {
 
         let claims = decode::<Claims>(
             token,
-            &DecodingKey::from_secret(state.config.jwt_secret.as_ref()),
+            &state.jwt_decoding_key,
             &Validation::default(),
         )
         .map_err(|_| AppError::Unauthorized("Invalid token".to_string()))?

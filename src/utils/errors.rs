@@ -45,7 +45,9 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
             }
             AppError::Validation(ref e) => {
-                let message = format!("Validation error: {}", e);
+                let mut message = String::with_capacity(50); // Pre-allocate capacity
+                message.push_str("Validation error: ");
+                message.push_str(&e.to_string());
                 (StatusCode::BAD_REQUEST, message)
             }
             AppError::Jwt(_) => (StatusCode::UNAUTHORIZED, "Invalid token".to_string()),

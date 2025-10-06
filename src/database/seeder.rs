@@ -2,6 +2,7 @@ use sqlx::PgPool;
 use sea_orm::{Database, DatabaseConnection};
 
 /// Ejecuta todas las migraciones basadas en los modelos
+#[allow(dead_code)]
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     tracing::info!("Running migrations from SeaORM models...");
 

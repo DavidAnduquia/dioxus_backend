@@ -59,12 +59,12 @@ swagger-ui = "0.1"
 tokio-test = "0.4"
 
 [profile.dev]
-opt-level = 0
-debug = true
-panic = "abort"  # Reduce binary size
+opt-level = 3
+debug = 1
+panic = "abort"
 codegen-units = 256
 lto = false
-incremental = true
+incremental = false
 
 [profile.release]
 opt-level = 3

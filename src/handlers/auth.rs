@@ -3,7 +3,6 @@ use axum::{
     response::Json,
 };
 use bcrypt::{hash, verify, DEFAULT_COST};
-use jsonwebtoken::{encode, EncodingKey, Header};
 use validator::Validate;
 
 use crate::{
@@ -60,7 +59,7 @@ pub async fn register(
     .await?;
 
     // Generate JWT token
-    let token = generate_token(&user, &state.config.jwt_secret)?;
+    let token = generate_token(&user, &state.jwt_encoding_key)?;
 
     let response = AuthResponse {
         token,
@@ -103,7 +102,7 @@ pub async fn login(
     }
 
     // Generate JWT token
-    let token = generate_token(&user, &state.config.jwt_secret)?;
+    let token = generate_token(&user, &state.jwt_encoding_key)?;
 
     let response = AuthResponse {
         token,
@@ -113,8 +112,11 @@ pub async fn login(
     Ok(Json(ApiResponse::success(response)))
 }
 
-fn generate_token(user: &User, secret: &str) -> Result<String, AppError> {
-    let now = chrono::Utc::now();
+fn generate_token(user: &User, encoding_key: &jsonwebtoken::EncodingKey) -> Result<String, AppError> {
+    use chrono::Utc;
+    use jsonwebtoken::{encode, Header};
+
+    let now = Utc::now();
     let exp = (now + chrono::Duration::hours(24)).timestamp() as usize;
     let iat = now.timestamp() as usize;
 
@@ -125,11 +127,5 @@ fn generate_token(user: &User, secret: &str) -> Result<String, AppError> {
         iat,
     };
 
-    let token = encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(secret.as_ref()),
-    )?;
-
-    Ok(token)
+    Ok(encode(&Header::default(), &claims, encoding_key)?)
 }

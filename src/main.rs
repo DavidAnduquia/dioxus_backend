@@ -31,7 +31,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_env()?;
     let port = config.port;
 
-    // Initialize database connection
     let db_pool = database::create_pool(&config.database_url).await?;
 
     // Run migrations
@@ -41,6 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = models::AppState {
         db: db_pool,
         config: config.clone(),
+        jwt_encoding_key: jsonwebtoken::EncodingKey::from_secret(config.jwt_secret.as_ref()),
+        jwt_decoding_key: jsonwebtoken::DecodingKey::from_secret(config.jwt_secret.as_ref()),
     };
 
     // Build our application with routes and middleware
