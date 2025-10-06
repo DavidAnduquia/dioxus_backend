@@ -27,6 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load configuration
     let config = Config::from_env()?;
+    let port = config.port;
 
     // Initialize database connection
     let db_pool = database::create_pool(&config.database_url).await?;
@@ -50,11 +51,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .with_state(app_state);
 
-    // Run the server
-    let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
-
+    // Run the server with graceful shutdown
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
 
+    tracing::info!("🚀 Server started on http://{}", addr);
+    tracing::info!("📚 Swagger UI available at http://{}/swagger-ui", addr);
+    tracing::info!("Press Ctrl+C to shutdown gracefully");
+
+    // Serve with graceful shutdown
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    tracing::info!("✅ Server shutdown complete");
     Ok(())
+}
+
+/// Handle shutdown signals (Ctrl+C) gracefully
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            tracing::info!("🛑 Received Ctrl+C signal, shutting down gracefully...");
+        },
+        _ = terminate => {
+            tracing::info!("🛑 Received SIGTERM signal, shutting down gracefully...");
+        },
+    }
 }
