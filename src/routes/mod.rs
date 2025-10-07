@@ -52,6 +52,7 @@ pub fn create_routes() -> Router<AppState> {
         .route("/posts/:id", get(handlers::posts::get_post))
         .route("/posts/:id", put(handlers::posts::update_post))
         .route("/posts/:id", delete(handlers::posts::delete_post))
+        .route("/ws", get(handlers::socket_manager::websocket_handler))  // WebSocket endpoint
 }
 
 pub fn create_app() -> Router<AppState> {

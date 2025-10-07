@@ -72,6 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("🚀 Server started on http://{}", addr);
     tracing::info!("📚 Swagger UI available at http://{}/swagger-ui", addr);
+    tracing::info!("🔌 WebSocket endpoint available at ws://{}/ws", addr);
     tracing::info!("Press Ctrl+C to shutdown gracefully");
 
     // Serve with graceful shutdown

@@ -1,4 +1,5 @@
 pub mod rol_service;
+pub mod socket_service;
 
 use sqlx::PgPool;
 use crate::{models, utils::errors::AppError};
