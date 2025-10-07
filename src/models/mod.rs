@@ -10,15 +10,74 @@ use jsonwebtoken::{EncodingKey, DecodingKey};
 use crate::config::Config;
 
 pub mod rol;
+pub mod actividad;
+pub mod area_conocimiento;
+pub mod calificacion;
+pub mod contenido_plantilla;
+pub mod contenido_transversal;
+pub mod curso;
+pub mod evaluacion_calificacion;
+pub mod evaluacion_sesion;
+pub mod evento_programado;
+pub mod examen;
+pub mod historial_curso_actividad;
+pub mod historial_curso_estudiante;
+pub mod modulo;
+pub mod modulo_archivo;
+pub mod notificacion;
+pub mod plantilla_curso;
+pub mod portafolio;
+pub mod portafolio_contenido;
+pub mod pregunta_examen;
+pub mod profesor_curso;
+pub mod usuario;
+
+// Re-export models for easier access
+pub use actividad::Entity as Actividad;
+pub use area_conocimiento::Entity as AreaConocimiento;
+pub use calificacion::Entity as Calificacion;
+pub use contenido_plantilla::Entity as ContenidoPlantilla;
+pub use contenido_transversal::Entity as ContenidoTransversal;
+pub use curso::Entity as Curso;
+pub use evaluacion_calificacion::Entity as EvaluacionCalificacion;
+pub use evaluacion_sesion::Entity as EvaluacionSesion;
+pub use evento_programado::Entity as EventoProgramado;
+pub use examen::Entity as Examen;
+pub use historial_curso_actividad::Entity as HistorialCursoActividad;
+pub use historial_curso_estudiante::Entity as HistorialCursoEstudiante;
+pub use modulo::Entity as Modulo;
+pub use modulo_archivo::Entity as ModuloArchivo;
+pub use notificacion::Entity as Notificacion;
+pub use plantilla_curso::Entity as PlantillaCurso;
+pub use portafolio::Entity as Portafolio;
+pub use profesor_curso::Entity as ProfesorCurso;
+pub use rol::Entity as Rol;
+pub use usuario::Entity as Usuario;
 
 // Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
-    pub db: PgPool,
+    pub db: Option<PgPool>,
     #[allow(dead_code)]
     pub config: Config,
     pub jwt_encoding_key: EncodingKey,
     pub jwt_decoding_key: DecodingKey,
+}
+
+impl AppState {
+    /// Verifica si la conexión a la base de datos está disponible
+    pub fn is_db_available(&self) -> bool {
+        self.db.is_some()
+    }
+    
+    /// Obtiene el pool de base de datos o retorna un error
+    pub fn get_db(&self) -> Result<&PgPool, crate::utils::errors::AppError> {
+        self.db.as_ref().ok_or_else(|| {
+            crate::utils::errors::AppError::ServiceUnavailable(
+                "Database connection is not available".to_string()
+            )
+        })
+    }
 }
 
 // User models

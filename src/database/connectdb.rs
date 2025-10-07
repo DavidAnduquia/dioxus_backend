@@ -1,13 +1,69 @@
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::time::Duration;
 
+/// Crea un pool de conexiones a PostgreSQL con reintentos
+/// 
+/// # Argumentos
+/// * `database_url` - URL de conexión a la base de datos
+/// 
+/// # Errores
+/// Retorna un error si no se puede conectar después de varios intentos
 pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
+    const MAX_RETRIES: u32 = 3;
+    const RETRY_DELAY_SECS: u64 = 2;
+    
+    tracing::info!("🔌 Intentando conectar a la base de datos...");
+    
+    for attempt in 1..=MAX_RETRIES {
+        match try_create_pool(database_url).await {
+            Ok(pool) => {
+                tracing::info!("✅ Conexión a la base de datos establecida exitosamente");
+                return Ok(pool);
+            }
+            Err(e) => {
+                let error_msg = e.to_string();
+                
+                if attempt < MAX_RETRIES {
+                    if error_msg.contains("Connection refused") || 
+                       error_msg.contains("could not connect") ||
+                       error_msg.contains("timed out") {
+                        tracing::warn!(
+                            "⚠️  Intento {}/{} falló: {}. Reintentando en {} segundos...",
+                            attempt,
+                            MAX_RETRIES,
+                            error_msg,
+                            RETRY_DELAY_SECS
+                        );
+                        tokio::time::sleep(Duration::from_secs(RETRY_DELAY_SECS)).await;
+                    } else {
+                        // Error no relacionado con conexión, fallar inmediatamente
+                        tracing::error!("❌ Error de base de datos no recuperable: {}", error_msg);
+                        return Err(e);
+                    }
+                } else {
+                    tracing::error!(
+                        "❌ No se pudo conectar a la base de datos después de {} intentos: {}",
+                        MAX_RETRIES,
+                        error_msg
+                    );
+                    return Err(e);
+                }
+            }
+        }
+    }
+    
+    unreachable!()
+}
+
+/// Intenta crear un pool de conexiones sin reintentos
+async fn try_create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
     PgPoolOptions::new()
-        .max_connections(2)  // Reducir a 2 conexiones máximo para menor memoria
-        .min_connections(0)  // No mantener conexiones mínimas idle
-        .acquire_timeout(Duration::from_secs(3))  // Reducir tiempo de adquisición
-        .idle_timeout(Duration::from_secs(60))   // Cerrar conexiones idle más rápido (1 minuto)
-        .max_lifetime(Duration::from_secs(600))  // Vida máxima más corta (10 minutos)
+        .max_connections(5)  // Aumentado a 5 para mejor rendimiento
+        .min_connections(1)  // Mantener al menos 1 conexión activa
+        .acquire_timeout(Duration::from_secs(5))  // Timeout de 5 segundos
+        .idle_timeout(Duration::from_secs(300))   // 5 minutos de idle
+        .max_lifetime(Duration::from_secs(1800))  // 30 minutos de vida máxima
+        .test_before_acquire(true)  // Verificar conexión antes de usar
         .connect(database_url)
         .await
 }

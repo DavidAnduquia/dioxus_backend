@@ -29,12 +29,15 @@ pub async fn register(
     // Validate input
     payload.validate()?;
 
+    // Obtener conexión a la base de datos
+    let db = state.get_db()?;
+
     // Check if user already exists
     let existing_user = sqlx::query_as::<_, User>(
         "SELECT * FROM users WHERE email = $1"
     )
     .bind(&payload.email)
-    .fetch_optional(&state.db)
+    .fetch_optional(db)
     .await?;
 
     if existing_user.is_some() {
@@ -55,7 +58,7 @@ pub async fn register(
     .bind(&payload.email)
     .bind(&password_hash)
     .bind(&payload.name)
-    .fetch_one(&state.db)
+    .fetch_one(db)
     .await?;
 
     // Generate JWT token
@@ -87,12 +90,15 @@ pub async fn login(
     // Validate input
     payload.validate()?;
 
+    // Obtener conexión a la base de datos
+    let db = state.get_db()?;
+
     // Find user by email
     let user = sqlx::query_as::<_, User>(
         "SELECT * FROM users WHERE email = $1"
     )
     .bind(&payload.email)
-    .fetch_optional(&state.db)
+    .fetch_optional(db)
     .await?
     .ok_or_else(|| AppError::Unauthorized("Invalid credentials".to_string()))?;
 

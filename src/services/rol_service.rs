@@ -16,7 +16,7 @@ impl RolService {
         .await
     }
 
-    pub async fn find_all(
+    pub async fn obtenerRoles(
         pool: &PgPool
     ) -> Result<Vec<Model>, sqlx::Error> {
         sqlx::query_as::<_, Model>(

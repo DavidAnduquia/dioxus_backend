@@ -31,7 +31,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_env()?;
     let port = config.port;
 
-    let db_pool = database::create_pool(&config.database_url).await?;
+    // Intentar conectar a la base de datos, pero no fallar si no se puede
+    let db_pool = match database::create_pool(&config.database_url).await {
+        Ok(pool) => {
+            tracing::info!("✅ Base de datos conectada correctamente");
+            Some(pool)
+        }
+        Err(e) => {
+            tracing::error!("❌ No se pudo conectar a la base de datos: {}", e);
+            tracing::warn!("⚠️  El servidor iniciará sin conexión a la base de datos");
+            tracing::warn!("⚠️  Las peticiones que requieran DB retornarán 503 Service Unavailable");
+            None
+        }
+    };
 
     // Run migrations
     //database::run_migrations(&db_pool).await?;

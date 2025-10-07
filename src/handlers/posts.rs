@@ -23,6 +23,8 @@ pub async fn get_posts(
     State(state): State<AppState>,
     Query(query): Query<GetPostsQuery>,
 ) -> Result<Json<ApiResponse<Vec<Post>>>, AppError> {
+    let db = state.get_db()?;
+    
     let page = query.page.unwrap_or(1);
     let limit = query.limit.unwrap_or(10).min(100); // Max 100 items per page
     let offset = (page - 1) * limit;
@@ -43,7 +45,7 @@ pub async fn get_posts(
     let posts = sqlx::query_as::<_, Post>(&sql)
         .bind(limit as i64)
         .bind(offset as i64)
-        .fetch_all(&state.db)
+        .fetch_all(db)
         .await?;
 
     Ok(Json(ApiResponse::success(posts)))
@@ -53,11 +55,13 @@ pub async fn get_post(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<Post>>, AppError> {
+    let db = state.get_db()?;
+    
     let post = sqlx::query_as::<_, Post>(
         "SELECT * FROM posts WHERE id = $1"
     )
     .bind(id)
-    .fetch_optional(&state.db)
+    .fetch_optional(db)
     .await?
     .ok_or_else(|| AppError::NotFound("Post not found".to_string()))?;
 
@@ -72,6 +76,8 @@ pub async fn create_post(
     // Validate input
     payload.validate()?;
 
+    let db = state.get_db()?;
+
     let post = sqlx::query_as::<_, Post>(
         r#"
         INSERT INTO posts (title, content, author_id, published)
@@ -83,7 +89,7 @@ pub async fn create_post(
     .bind(&payload.content)
     .bind(auth_user.user_id)
     .bind(payload.published.unwrap_or(false))
-    .fetch_one(&state.db)
+    .fetch_one(db)
     .await?;
 
     Ok(Json(ApiResponse::success(post)))
@@ -98,12 +104,14 @@ pub async fn update_post(
     // Validate input
     payload.validate()?;
 
+    let db = state.get_db()?;
+
     // Check if post exists and user owns it
     let existing_post = sqlx::query_as::<_, Post>(
         "SELECT * FROM posts WHERE id = $1"
     )
     .bind(id)
-    .fetch_optional(&state.db)
+    .fetch_optional(db)
     .await?
     .ok_or_else(|| AppError::NotFound("Post not found".to_string()))?;
 
@@ -120,7 +128,7 @@ pub async fn update_post(
         )
         .bind(&title)
         .bind(id)
-        .fetch_one(&state.db)
+        .fetch_one(db)
         .await?;
     }
 
@@ -130,7 +138,7 @@ pub async fn update_post(
         )
         .bind(&content)
         .bind(id)
-        .fetch_one(&state.db)
+        .fetch_one(db)
         .await?;
     }
 
@@ -140,7 +148,7 @@ pub async fn update_post(
         )
         .bind(published)
         .bind(id)
-        .fetch_one(&state.db)
+        .fetch_one(db)
         .await?;
     }
 
@@ -152,12 +160,14 @@ pub async fn delete_post(
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<()>>, AppError> {
+    let db = state.get_db()?;
+    
     // Check if post exists and user owns it
     let existing_post = sqlx::query_as::<_, Post>(
         "SELECT * FROM posts WHERE id = $1"
     )
     .bind(id)
-    .fetch_optional(&state.db)
+    .fetch_optional(db)
     .await?
     .ok_or_else(|| AppError::NotFound("Post not found".to_string()))?;
 
@@ -167,7 +177,7 @@ pub async fn delete_post(
 
     sqlx::query("DELETE FROM posts WHERE id = $1")
         .bind(id)
-        .execute(&state.db)
+        .execute(db)
         .await?;
 
     Ok(Json(ApiResponse::success(())))

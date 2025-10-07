@@ -40,7 +40,9 @@ struct OAuth2TokenResponse {
 
 pub fn create_routes() -> Router<AppState> {
     Router::new()
-        .route("/health", get(health_check))
+        .route("/health", get(handlers::health::health_check))
+        .route("/ready", get(handlers::health::readiness_check))
+        .route("/live", get(handlers::health::liveness_check))
         .route("/auth/register", post(handlers::auth::register))
         .route("/auth/login", post(handlers::auth::login))
         .route("/auth/token", post(oauth2_token_endpoint))  // Endpoint OAuth2
@@ -91,13 +93,6 @@ pub fn create_app() -> Router<AppState> {
 )]
 pub struct ApiDoc;
 
-async fn health_check() -> Json<Value> {
-    Json(json!({
-        "status": "healthy",
-        "timestamp": chrono::Utc::now().to_rfc3339(),
-        "version": env!("CARGO_PKG_VERSION")
-    }))
-}
 
 async fn oauth2_token_endpoint(
     State(state): State<AppState>,
@@ -115,12 +110,20 @@ async fn oauth2_token_endpoint(
         })));
     }
 
+    // Obtener conexión a la base de datos
+    let db = state.get_db().map_err(|_| {
+        Json(json!({
+            "error": "server_error",
+            "error_description": "Database connection unavailable"
+        }))
+    })?;
+
     // Buscar usuario por email
     let user = sqlx::query_as::<_, User>(
         "SELECT id, email, password_hash, name, created_at, updated_at FROM users WHERE email = $1"
     )
     .bind(&form.username)
-    .fetch_optional(&state.db)
+    .fetch_optional(db)
     .await
     .map_err(|e| {
         tracing::error!("Database error in OAuth2 token endpoint: {:?}", e);

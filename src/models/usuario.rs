@@ -1,22 +1,59 @@
-use serde::{Serialize, Deserialize};
+use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Usuario {
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[sea_orm(table_name = "usuarios")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = true)]
     pub id: i64,
     pub nombre: String,
     pub documento_nit: Option<String>,
+    #[sea_orm(unique)]
     pub correo: String,
-    #[serde(skip_serializing)]  // Seguridad: no exponer en responses
+    #[serde(skip_serializing)]
     pub contrasena: String,
     pub rol_id: i32,
     pub estado: Option<bool>,
     pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct UsuarioConRol {
     #[serde(flatten)]
-    pub usuario: Usuario,
-    pub rol: Rol,  // Rol debe ser definido en mod.rs
+    pub usuario: Model,
+    pub rol: super::rol::Model,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewUsuario {
+    pub nombre: String,
+    pub documento_nit: Option<String>,
+    pub correo: String,
+    pub contrasena: String,
+    pub rol_id: i32,
+    pub estado: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateUsuario {
+    pub nombre: Option<String>,
+    pub documento_nit: Option<String>,
+    pub correo: Option<String>,
+    pub contrasena: Option<String>,
+    pub rol_id: Option<i32>,
+    pub estado: Option<bool>,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::rol::Entity",
+        from = "Column::RolId",
+        to = "super::rol::Column::Id"
+    )]
+    Rol,
+}
+
+impl ActiveModelBehavior for ActiveModel {}

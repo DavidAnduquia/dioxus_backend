@@ -35,6 +35,15 @@ pub enum AppError {
 
     #[error("Internal server error: {0}")]
     InternalServerError(String),
+
+    #[error("Database connection timeout: {0}")]
+    DatabaseTimeout(String),
+
+    #[error("Database connection failed: {0}")]
+    DatabaseConnectionFailed(String),
+
+    #[error("Service unavailable: {0}")]
+    ServiceUnavailable(String),
 }
 
 impl IntoResponse for AppError {
@@ -42,7 +51,22 @@ impl IntoResponse for AppError {
         let (status, message) = match self {
             AppError::Database(ref e) => {
                 tracing::error!("Database error: {:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                
+                // Detectar errores específicos de conexión
+                let error_msg = e.to_string();
+                if error_msg.contains("PoolTimedOut") || error_msg.contains("timed out") {
+                    (
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        "Database connection timeout. Please try again later.".to_string()
+                    )
+                } else if error_msg.contains("Connection refused") || error_msg.contains("could not connect") {
+                    (
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        "Database is currently unavailable. Please try again later.".to_string()
+                    )
+                } else {
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                }
             }
             AppError::Validation(ref e) => {
                 let mut message = String::with_capacity(50); // Pre-allocate capacity
@@ -62,6 +86,24 @@ impl IntoResponse for AppError {
             AppError::InternalServerError(message) => {
                 tracing::error!("Internal server error: {}", message);
                 (StatusCode::INTERNAL_SERVER_ERROR, message)
+            }
+            AppError::DatabaseTimeout(message) => {
+                tracing::error!("Database timeout: {}", message);
+                (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    format!("Database connection timeout: {}", message)
+                )
+            }
+            AppError::DatabaseConnectionFailed(message) => {
+                tracing::error!("Database connection failed: {}", message);
+                (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    format!("Database connection failed: {}", message)
+                )
+            }
+            AppError::ServiceUnavailable(message) => {
+                tracing::error!("Service unavailable: {}", message);
+                (StatusCode::SERVICE_UNAVAILABLE, message)
             }
         };
 
