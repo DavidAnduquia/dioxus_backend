@@ -13,6 +13,14 @@ use crate::{
     utils::errors::AppError,
 };
 
+// Validación básica de email sin dependencia extra
+fn is_valid_email(email: &str) -> bool {
+    let parts: Vec<&str> = email.split('@').collect();
+    if parts.len() != 2 { return false; }
+    let (local, domain) = (parts[0], parts[1]);
+    !local.is_empty() && domain.contains('.') && !domain.starts_with('.') && !domain.ends_with('.')
+}
+
 #[derive(Debug, Clone)]
 pub struct UsuarioService {
     db: DatabaseConnection,
@@ -65,16 +73,17 @@ impl UsuarioService {
 
     // Obtener todos los usuarios con su rol
     pub async fn obtener_usuarios(&self) -> Result<Vec<usuario::UsuarioConRol>, DbErr> {
+        use sea_orm::QuerySelect;
+        
         let usuarios = Usuario::find()
-            .find_with_related(rol::Entity)
+            .find_also_related(rol::Entity)
             .all(&self.db)
             .await?;
 
         let usuarios_con_rol = usuarios
             .into_iter()
-            .map(|(usuario, roles)| usuario::UsuarioConRol {
-                usuario,
-                rol: roles.into_iter().next().unwrap(), // Asumimos que hay al menos un rol
+            .filter_map(|(usuario, rol_opt)| {
+                rol_opt.map(|rol| usuario::UsuarioConRol { usuario, rol })
             })
             .collect();
 
@@ -100,14 +109,14 @@ impl UsuarioService {
         }
 
         // Validar formato de correo
-        if !validator::validate_email(&nuevo_usuario.correo) {
+        if !is_valid_email(&nuevo_usuario.correo) {
             return Err(AppError::BadRequest(
                 "El formato del correo electrónico no es válido".to_string(),
             ));
         }
 
         if nuevo_usuario.contrasena.trim().is_empty() {
-            return Err(AppService::BadRequest(
+            return Err(AppError::BadRequest(
                 "La contraseña es obligatoria".to_string(),
             ));
         }
@@ -153,7 +162,7 @@ impl UsuarioService {
             correo: Set(nuevo_usuario.correo),
             contrasena: Set(nuevo_usuario.contrasena),
             rol_id: Set(nuevo_usuario.rol_id),
-            estado: Set(nuevo_usuario.estado.unwrap_or(true)),
+            estado: Set(Some(nuevo_usuario.estado.unwrap_or(true))),
             created_at: Set(Some(Utc::now())),
             updated_at: Set(Some(Utc::now())),
             ..Default::default()
@@ -184,7 +193,7 @@ impl UsuarioService {
         }
 
         if let Some(correo) = datos_actualizados.correo {
-            if !validator::validate_email(&correo) {
+            if !is_valid_email(&correo) {
                 return Err(AppError::BadRequest(
                     "El formato del correo electrónico no es válido".to_string(),
                 ));
@@ -236,7 +245,7 @@ impl UsuarioService {
         }
 
         if let Some(estado) = datos_actualizados.estado {
-            usuario.estado = Set(estado);
+            usuario.estado = Set(Some(estado));
         }
 
         usuario.updated_at = Set(Some(Utc::now()));

@@ -1,5 +1,6 @@
 pub mod auth;
 // pub mod posts;
+pub mod usuarios;
 pub mod users;
 pub mod roles;
 pub mod health;

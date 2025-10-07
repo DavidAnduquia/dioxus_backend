@@ -11,6 +11,7 @@ use utoipa::OpenApi;
 use crate::{handlers, models::AppState};
 
 pub mod roles;
+pub mod usuarios;
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
@@ -59,6 +60,7 @@ pub fn create_app() -> Router<AppState> {
     Router::new()
         .merge(create_routes())
         .merge(roles::roles_routes())  // Agregar rutas de roles
+        .merge(usuarios::usuarios_routes()) // Agregar rutas de usuarios
         .route("/api-docs/openapi.json", get(serve_openapi_spec))
         .route("/swagger-ui", get(serve_swagger_ui))
         .route("/swagger-ui/", get(serve_swagger_ui))

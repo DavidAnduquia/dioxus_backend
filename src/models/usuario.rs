@@ -56,4 +56,10 @@ pub enum Relation {
     Rol,
 }
 
+impl Related<super::rol::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Rol.def()
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}

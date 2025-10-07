@@ -33,6 +33,9 @@ pub enum AppError {
     #[error("Not found: {0}")]
     NotFound(String),
 
+    #[error("Conflict: {0}")]
+    Conflict(String),
+
     #[error("Internal server error: {0}")]
     InternalServerError(String),
 
@@ -44,6 +47,9 @@ pub enum AppError {
 
     #[error("Service unavailable: {0}")]
     ServiceUnavailable(String),
+
+    #[error("SeaORM database error: {0}")]
+    SeaOrm(#[from] sea_orm::DbErr),
 }
 
 impl IntoResponse for AppError {
@@ -83,6 +89,7 @@ impl IntoResponse for AppError {
             AppError::Unauthorized(message) => (StatusCode::UNAUTHORIZED, message),
             AppError::Forbidden(message) => (StatusCode::FORBIDDEN, message),
             AppError::NotFound(message) => (StatusCode::NOT_FOUND, message),
+            AppError::Conflict(message) => (StatusCode::CONFLICT, message),
             AppError::InternalServerError(message) => {
                 tracing::error!("Internal server error: {}", message);
                 (StatusCode::INTERNAL_SERVER_ERROR, message)
@@ -104,6 +111,10 @@ impl IntoResponse for AppError {
             AppError::ServiceUnavailable(message) => {
                 tracing::error!("Service unavailable: {}", message);
                 (StatusCode::SERVICE_UNAVAILABLE, message)
+            }
+            AppError::SeaOrm(ref e) => {
+                tracing::error!("SeaORM database error: {:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
             }
         };
 
