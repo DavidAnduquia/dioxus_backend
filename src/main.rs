@@ -1,8 +1,6 @@
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 mod config;
 mod database;
 mod entities;
@@ -18,14 +16,13 @@ use routes::create_app;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "rust_api_backend=debug,tower_http=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // Inicializar logger con archivo en `logs/`
+    utils::logger::init_logger("logs", "rust-api-backend")?;
+
+    // Limpiar logs antiguos (más de 30 días)
+    if let Err(e) = utils::logger::cleanup_old_logs("logs", 30) {
+        tracing::warn!("⚠️  No se pudieron limpiar los logs antiguos: {}", e);
+    }
 
     // Load configuration
     let config = Config::from_env()?;

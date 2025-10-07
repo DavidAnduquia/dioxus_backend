@@ -47,12 +47,12 @@ pub fn create_routes() -> Router<AppState> {
         .route("/auth/login", post(handlers::auth::login))
         .route("/auth/token", post(oauth2_token_endpoint))  // Endpoint OAuth2
         .route("/users/me", get(handlers::users::get_current_user))
-        .route("/posts", get(handlers::posts::get_posts))
-        .route("/posts", post(handlers::posts::create_post))
-        .route("/posts/:id", get(handlers::posts::get_post))
-        .route("/posts/:id", put(handlers::posts::update_post))
-        .route("/posts/:id", delete(handlers::posts::delete_post))
         .route("/ws", get(handlers::socket_manager::websocket_handler))  // WebSocket endpoint
+        // .route("/posts", get(handlers::posts::get_posts))
+        // .route("/posts", post(handlers::posts::create_post))
+        // .route("/posts/:id", get(handlers::posts::get_post))
+        // .route("/posts/:id", put(handlers::posts::update_post))
+        // .route("/posts/:id", delete(handlers::posts::delete_post))
 }
 
 pub fn create_app() -> Router<AppState> {
