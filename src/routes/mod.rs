@@ -17,6 +17,7 @@ pub mod curso;
 pub mod examen;
 pub mod matricula;
 pub mod modulo;
+pub mod actividad;
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
@@ -71,6 +72,7 @@ pub fn create_app() -> Router<AppState> {
         .merge(examen::examen_routes())
         .merge(matricula::matricula_routes())
         .merge(modulo::modulo_routes())
+        .merge(actividad::actividad_routes())
         .route("/api-docs/openapi.json", get(serve_openapi_spec))
         .route("/swagger-ui", get(serve_swagger_ui))
         .route("/swagger-ui/", get(serve_swagger_ui))

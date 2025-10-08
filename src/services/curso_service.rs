@@ -2,7 +2,7 @@ use axum::extract::FromRef;
 use chrono::{DateTime, Datelike, Utc};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
-    IntoActiveModel, QueryFilter, QueryOrder, Set, TransactionTrait, SqlxPostgresConnector, Order
+    QueryFilter, QueryOrder, Set, TransactionTrait, SqlxPostgresConnector, Order
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -11,17 +11,16 @@ use std::sync::Arc;
 use crate::{
     models::{
         actividad::{self, Entity as Actividad, Model as ActividadModel},
-        area_conocimiento::{self, Entity as AreaConocimiento, Model as AreaConocimientoModel},
+        area_conocimiento::{Entity as AreaConocimientoEntity, Model as AreaConocimiento},
         contenido_transversal::{self, Entity as ContenidoTransversal, Model as ContenidoTransversalModel},
         curso::{self, Entity as Curso, Model as CursoModel},
         evaluacion_sesion::{self, Entity as EvaluacionSesion, Model as EvaluacionSesionModel},
-        plantilla_curso::{self, Entity as PlantillaCurso, Model as PlantillaCursoModel},
-        usuario::{self, Entity as Usuario},
+        plantilla_curso::{self, Entity as PlantillaCurso},
+        usuario::Entity as Usuario,
         AppState,
     },
     utils::errors::AppError,
 };
-
 #[derive(Debug, Clone)]
 pub struct CursoService {
     pool: Arc<Option<PgPool>>,
@@ -72,7 +71,7 @@ pub struct ActualizarCurso {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CursoDetallado {
     pub curso: CursoModel,
-    pub area: Option<AreaConocimientoModel>,
+    pub area: Option<AreaConocimiento>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,7 +102,7 @@ impl CursoService {
         let db = self.connection()?;
         let cursos = Curso::find()
             .order_by_desc(curso::Column::CreatedAt)
-            .find_also_related(AreaConocimiento)
+            .find_also_related(AreaConocimientoEntity)
             .all(&db)
             .await
             .map_err(map_db_err)?
@@ -120,7 +119,7 @@ impl CursoService {
     ) -> Result<CursoDetallado, AppError> {
         let db = self.connection()?;
         let result = Curso::find_by_id(id)
-            .find_also_related(AreaConocimiento)
+            .find_also_related(AreaConocimientoEntity)
             .one(&db)
             .await
             .map_err(map_db_err)?
@@ -147,7 +146,7 @@ impl CursoService {
 
         // Validar área de conocimiento
         let db = self.connection()?;
-        let area = AreaConocimiento::find_by_id(datos.area_conocimiento_id)
+        let area = AreaConocimientoEntity::find_by_id(datos.area_conocimiento_id)
             .one(&db)
             .await
             .map_err(map_db_err)?
@@ -275,7 +274,7 @@ impl CursoService {
         }
 
         if let Some(area_id) = datos.area_conocimiento_id {
-            let area = AreaConocimiento::find_by_id(area_id)
+            let area = AreaConocimientoEntity::find_by_id(area_id)
                 .one(&mut txn)
                 .await
                 .map_err(map_db_err)?
@@ -387,7 +386,7 @@ impl CursoService {
         let cursos = Curso::find()
             .filter(curso::Column::AreaConocimientoId.eq(area_conocimiento_id))
             .filter(curso::Column::Periodo.eq(periodo))
-            .find_also_related(AreaConocimiento)
+            .find_also_related(AreaConocimientoEntity)
             .all(&db)
             .await
             .map_err(map_db_err)?

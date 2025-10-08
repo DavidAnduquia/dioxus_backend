@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use crate::{
     models::{
-        curso::{self, Entity as Curso},
+        curso::Entity as Curso,
         historial_curso_estudiante::{self, Entity as Historial, Model as HistorialModel},
-        usuario::{self, Entity as Usuario},
+        usuario::Entity as Usuario,
         AppState,
     },
     utils::errors::AppError,

@@ -1,4 +1,4 @@
-use chrono::{NaiveTime, Utc};
+use chrono::{Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, Set};
 
 use crate::{

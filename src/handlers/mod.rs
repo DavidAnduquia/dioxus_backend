@@ -9,3 +9,4 @@ pub mod curso;
 pub mod examen;
 pub mod matricula;
 pub mod modulo;
+pub mod actividad;
