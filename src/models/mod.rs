@@ -6,8 +6,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 use jsonwebtoken::{EncodingKey, DecodingKey};
-
-#[allow(dead_code)]
+ 
 use crate::config::Config;
 
 pub mod rol;
@@ -38,8 +37,7 @@ pub mod usuario;
 // Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
-    pub db: Arc<Option<PgPool>>,
-    #[allow(dead_code)]
+    pub db: Arc<Option<PgPool>>, 
     pub config: Config,
     pub jwt_encoding_key: EncodingKey,
     pub jwt_decoding_key: DecodingKey,
@@ -55,7 +53,10 @@ impl AppState {
     pub fn get_db(&self) -> Result<&PgPool, crate::utils::errors::AppError> {
         self.db.as_ref().as_ref().ok_or_else(|| {
             crate::utils::errors::AppError::ServiceUnavailable(
-                "Database connection is not available".to_string()
+                format!(
+                    "Database connection is not available (environment: {:?})",
+                    self.config.environment
+                )
             )
         })
     }
