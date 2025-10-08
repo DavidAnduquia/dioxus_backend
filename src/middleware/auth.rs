@@ -10,8 +10,7 @@ use crate::{
     utils::errors::AppError,
 };
 
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
+#[derive(Debug, Clone)] 
 pub struct AuthUser {
     pub user_id: Uuid,
     pub email: String,
@@ -45,10 +44,20 @@ impl FromRequestParts<AppState> for AuthUser {
         let user_id = Uuid::parse_str(&claims.sub)
             .map_err(|_| AppError::Unauthorized("Invalid user ID in token".to_string()))?;
 
-        Ok(AuthUser {
+        let email = claims.email;
+        if email.trim().is_empty() {
+            return Err(AppError::Unauthorized("Email claim missing in token".to_string()));
+        }
+
+        let auth_user = AuthUser {
             user_id,
-            email: claims.email,
-        })
+            email,
+        };
+
+        // Registrar el correo para evitar advertencias y facilitar el debugging
+        tracing::trace!("Authenticated user email: {}", auth_user.email);
+
+        Ok(auth_user)
     }
 }
 
