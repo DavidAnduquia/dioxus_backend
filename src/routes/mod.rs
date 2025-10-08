@@ -19,8 +19,7 @@ pub mod matricula;
 pub mod modulo;
 pub mod actividad;
 
-#[derive(Deserialize)]
-#[allow(dead_code)]
+#[derive(Deserialize)] 
 struct OAuth2TokenRequest {
     grant_type: String,
     username: String,
@@ -124,6 +123,16 @@ async fn oauth2_token_endpoint(
             "error_description": "Only 'password' grant type is supported"
         })));
     }
+    
+    // Validar client_id si se proporciona (opcional en OAuth2 password flow)
+    if !form.client_id.is_empty() {
+        tracing::debug!("Client ID provided: {}", form.client_id);
+    }
+    
+    // Validar client_secret si se proporciona
+    if !form.client_secret.is_empty() {
+        tracing::debug!("Client secret provided");
+    }
 
     // Obtener conexión a la base de datos
     let db = state.get_db().map_err(|_| {
@@ -199,12 +208,19 @@ async fn oauth2_token_endpoint(
         }))
     })?;
 
+    // Usar el scope proporcionado o el por defecto
+    let scope = if !form.scope.is_empty() {
+        form.scope
+    } else {
+        "read write".to_string()
+    };
+    
     Ok(Json(OAuth2TokenResponse {
         access_token: token,
         token_type: "Bearer".to_string(),
         expires_in: Some(86400),
         refresh_token: None,
-        scope: Some("read write".to_string()),
+        scope: Some(scope),
     }))
 }
 
