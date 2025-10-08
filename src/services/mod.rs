@@ -40,8 +40,7 @@ use crate::{
     utils::errors::AppError,
 };
 
-#[derive(Clone)]
-#[allow(dead_code)]
+#[derive(Clone)] 
 pub struct DatabaseService {
     pool: PgPool,
 }
