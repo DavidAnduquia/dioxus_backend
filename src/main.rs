@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Load configuration
-    let config = Config::from_env()?;
+    let config = Arc::new(Config::from_env()?);
     let port = config.port;
 
     // Intentar conectar a la base de datos, pero no fallar si no se puede
@@ -53,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create application state
     let app_state = models::AppState {
         db: Arc::new(db_pool),
-        config: config.clone(),
+        config: Arc::clone(&config),
         jwt_encoding_key: jsonwebtoken::EncodingKey::from_secret(config.jwt_secret.as_ref()),
         jwt_decoding_key: jsonwebtoken::DecodingKey::from_secret(config.jwt_secret.as_ref()),
     };

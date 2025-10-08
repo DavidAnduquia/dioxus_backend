@@ -38,7 +38,7 @@ pub mod usuario;
 #[derive(Clone)]
 pub struct AppState {
     pub db: Arc<Option<PgPool>>, 
-    pub config: Config,
+    pub config: Arc<Config>,
     pub jwt_encoding_key: EncodingKey,
     pub jwt_decoding_key: DecodingKey,
 }
