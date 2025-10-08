@@ -12,6 +12,7 @@ pub struct SocketService {
     connections: Arc<RwLock<HashMap<i64, Vec<String>>>>, // user_id -> vec of socket_ids
 }
 
+#[allow(dead_code)]
 impl SocketService {
     pub fn new() -> Self {
         Self {
@@ -42,8 +43,7 @@ impl SocketService {
     }
 
     /// Emite una notificación a un usuario específico
-    /// Equivalente a emitNotificationToUser en TypeScript
-    #[allow(dead_code)]
+    /// Equivalente a emitNotificationToUser en TypeScript 
     pub async fn emit_notification_to_user(&self, user_id: i64, notification: Value) {
         let connections = self.connections.read().await;
         if let Some(sockets) = connections.get(&user_id) {
@@ -63,8 +63,7 @@ impl SocketService {
     }
 
     /// Emite una notificación a múltiples usuarios
-    /// Equivalente a emitNotificationToUsers en TypeScript
-    #[allow(dead_code)]
+    /// Equivalente a emitNotificationToUsers en TypeScript 
     pub async fn emit_notification_to_users(&self, user_ids: Vec<i64>, notification: Value) {
         for user_id in user_ids {
             self.emit_notification_to_user(user_id, notification.clone())
@@ -73,8 +72,7 @@ impl SocketService {
     }
 
     /// Emite una notificación broadcast a todos los usuarios conectados
-    /// Equivalente a emitNotificationBroadcast en TypeScript
-    #[allow(dead_code)]
+    /// Equivalente a emitNotificationBroadcast en TypeScript 
     pub async fn emit_notification_broadcast(&self, notification: Value) {
         let connections = self.connections.read().await;
         let total_users = connections.len();
@@ -93,15 +91,13 @@ impl SocketService {
     }
 
     /// Verifica si el servicio de sockets está disponible
-    /// Equivalente a isAvailable en TypeScript
-    #[allow(dead_code)]
+    /// Equivalente a isAvailable en TypeScript 
     pub async fn is_available(&self) -> bool {
         true // En Rust siempre está disponible si la instancia existe
     }
 
     /// Obtiene información de conexión
-    /// Equivalente a getConnectionInfo en TypeScript
-    #[allow(dead_code)]
+    /// Equivalente a getConnectionInfo en TypeScript 
     pub async fn get_connection_info(&self) -> ConnectionInfo {
         let connections = self.connections.read().await;
         let connected_users = connections.len();
@@ -116,8 +112,7 @@ impl SocketService {
         }
     }
 
-    /// Obtiene el número total de conexiones activas
-    #[allow(dead_code)]
+    /// Obtiene el número total de conexiones activas 
     pub async fn get_total_connections(&self) -> usize {
         let connections = self.connections.read().await;
         connections.values().map(|v| v.len()).sum()
