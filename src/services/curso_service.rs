@@ -1,10 +1,12 @@
-use async_trait::async_trait;
+use axum::extract::FromRef;
 use chrono::{DateTime, Datelike, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
-    IntoActiveModel, QueryFilter, QueryOrder, Set, TransactionTrait
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
+    IntoActiveModel, QueryFilter, QueryOrder, Set, TransactionTrait, SqlxPostgresConnector, Order
 };
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use std::sync::Arc;
 
 use crate::{
     models::{
@@ -15,13 +17,20 @@ use crate::{
         evaluacion_sesion::{self, Entity as EvaluacionSesion, Model as EvaluacionSesionModel},
         plantilla_curso::{self, Entity as PlantillaCurso, Model as PlantillaCursoModel},
         usuario::{self, Entity as Usuario},
+        AppState,
     },
     utils::errors::AppError,
 };
 
 #[derive(Debug, Clone)]
 pub struct CursoService {
-    db: DatabaseConnection,
+    pool: Arc<Option<PgPool>>,
+}
+
+impl FromRef<AppState> for CursoService {
+    fn from_ref(state: &AppState) -> Self {
+        CursoService::new(Arc::clone(&state.db))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,15 +84,27 @@ pub struct AulaCurso {
 }
 
 impl CursoService {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
+        Self { pool }
+    }
+
+    fn pool(&self) -> Result<&PgPool, AppError> {
+        self.pool.as_ref().as_ref().ok_or_else(|| {
+            AppError::ServiceUnavailable("Database connection is not available".to_string())
+        })
+    }
+
+    fn connection(&self) -> Result<DatabaseConnection, AppError> {
+        let pool = self.pool()?;
+        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
     }
 
     pub async fn obtener_cursos(&self) -> Result<Vec<CursoDetallado>, AppError> {
+        let db = self.connection()?;
         let cursos = Curso::find()
             .order_by_desc(curso::Column::CreatedAt)
             .find_also_related(AreaConocimiento)
-            .all(&self.db)
+            .all(&db)
             .await
             .map_err(map_db_err)?
             .into_iter()
@@ -97,9 +118,10 @@ impl CursoService {
         &self,
         id: i32,
     ) -> Result<CursoDetallado, AppError> {
+        let db = self.connection()?;
         let result = Curso::find_by_id(id)
             .find_also_related(AreaConocimiento)
-            .one(&self.db)
+            .one(&db)
             .await
             .map_err(map_db_err)?
             .ok_or_else(|| AppError::NotFound(format!("Curso con id {} no encontrado", id)))?;
@@ -124,8 +146,9 @@ impl CursoService {
         }
 
         // Validar área de conocimiento
+        let db = self.connection()?;
         let area = AreaConocimiento::find_by_id(datos.area_conocimiento_id)
-            .one(&self.db)
+            .one(&db)
             .await
             .map_err(map_db_err)?
             .ok_or_else(|| AppError::BadRequest("El área de conocimiento especificada no existe".to_string()))?;
@@ -138,7 +161,7 @@ impl CursoService {
         // Validar coordinador si se envía
         if let Some(coordinador_id) = datos.coordinador_id {
             Usuario::find_by_id(coordinador_id)
-                .one(&self.db)
+                .one(&db)
                 .await
                 .map_err(map_db_err)?
                 .ok_or_else(|| AppError::BadRequest("El coordinador especificado no existe".to_string()))?;
@@ -151,10 +174,11 @@ impl CursoService {
         });
         let anio_pensum_final = datos.anio_pensum.unwrap_or(datos.fecha_inicio.year());
 
-        let mut txn = self.db.begin().await.map_err(map_db_err)?;
+        let mut txn = db.begin().await.map_err(map_db_err)?;
         let ahora = Utc::now();
 
         let curso_activo = curso::ActiveModel {
+            id: Set(0), // Auto-increment field
             nombre: Set(datos.nombre.clone()),
             codigo: Set(datos.codigo.clone()),
             descripcion: Set(datos.descripcion.clone()),
@@ -180,6 +204,7 @@ impl CursoService {
             .map_err(map_db_err)?;
 
         let plantilla_activa = plantilla_curso::ActiveModel {
+            id: Set(0), // Auto-increment field
             nombre: Set(format!("Plantilla - {}", curso_creado.nombre)),
             descripcion: Set(curso_creado.descripcion.clone()),
             activa: Set(true),
@@ -213,7 +238,8 @@ impl CursoService {
         id: i32,
         datos: ActualizarCurso,
     ) -> Result<CursoModel, AppError> {
-        let mut txn = self.db.begin().await.map_err(map_db_err)?;
+        let db = self.connection()?;
+        let mut txn = db.begin().await.map_err(map_db_err)?;
 
         let mut curso_model = Curso::find_by_id(id)
             .one(&mut txn)
@@ -305,7 +331,7 @@ impl CursoService {
 
         curso_model.updated_at = Some(Utc::now());
 
-        let mut curso_activo: curso::ActiveModel = curso_model.into();
+        let curso_activo: curso::ActiveModel = curso_model.into();
         let curso_actualizado = curso_activo
             .update(&mut txn)
             .await
@@ -317,7 +343,8 @@ impl CursoService {
     }
 
     pub async fn eliminar_curso(&self, id: i32) -> Result<(), AppError> {
-        let mut txn = self.db.begin().await.map_err(map_db_err)?;
+        let db = self.connection()?;
+        let mut txn = db.begin().await.map_err(map_db_err)?;
 
         let curso = Curso::find_by_id(id)
             .one(&mut txn)
@@ -341,9 +368,10 @@ impl CursoService {
         &self,
         plantilla_id: i32,
     ) -> Result<Vec<CursoModel>, AppError> {
+        let db = self.connection()?;
         let cursos = Curso::find()
             .filter(curso::Column::PlantillaBaseId.eq(plantilla_id))
-            .all(&self.db)
+            .all(&db)
             .await
             .map_err(map_db_err)?;
 
@@ -355,11 +383,12 @@ impl CursoService {
         area_conocimiento_id: i32,
         periodo: &str,
     ) -> Result<Vec<CursoDetallado>, AppError> {
+        let db = self.connection()?;
         let cursos = Curso::find()
             .filter(curso::Column::AreaConocimientoId.eq(area_conocimiento_id))
             .filter(curso::Column::Periodo.eq(periodo))
             .find_also_related(AreaConocimiento)
-            .all(&self.db)
+            .all(&db)
             .await
             .map_err(map_db_err)?
             .into_iter()
@@ -370,23 +399,24 @@ impl CursoService {
     }
 
     pub async fn obtener_aula_por_curso_id(&self, id: i32) -> Result<AulaCurso, AppError> {
+        let db = self.connection()?;
         let curso = Curso::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await
             .map_err(map_db_err)?
             .ok_or_else(|| AppError::NotFound("Curso no encontrado".to_string()))?;
 
         let modulos = ContenidoTransversal::find()
             .filter(contenido_transversal::Column::CursoId.eq(id))
-            .order_by_asc(contenido_transversal::Column::CreatedAt)
-            .all(&self.db)
+            .order_by(contenido_transversal::Column::CreatedAt, Order::Asc)
+            .all(&db)
             .await
             .map_err(map_db_err)?;
 
         let actividades = Actividad::find()
             .filter(actividad::Column::CursoId.eq(id))
-            .order_by_asc(actividad::Column::CreatedAt)
-            .all(&self.db)
+            .order_by(actividad::Column::CreatedAt, Order::Asc)
+            .all(&db)
             .await
             .map_err(map_db_err)?;
 
@@ -397,7 +427,7 @@ impl CursoService {
         } else {
             EvaluacionSesion::find()
                 .filter(evaluacion_sesion::Column::SesionId.is_in(actividades_ids))
-                .all(&self.db)
+                .all(&db)
                 .await
                 .map_err(map_db_err)?
         };
@@ -410,84 +440,6 @@ impl CursoService {
         })
     }
 }
-
 fn map_db_err(err: DbErr) -> AppError {
     AppError::InternalServerError(err.to_string())
-}
-
-#[async_trait]
-impl crate::traits::service::CrudService<CursoModel> for CursoService {
-    async fn get_all(&self) -> Result<Vec<CursoModel>, AppError> {
-        let cursos = self
-            .obtener_cursos()
-            .await?
-            .into_iter()
-            .map(|detalle| detalle.curso)
-            .collect();
-        Ok(cursos)
-    }
-
-    async fn get_by_id(&self, id: i32) -> Result<Option<CursoModel>, AppError> {
-        match self.obtener_curso_por_id(id).await {
-            Ok(detalle) => Ok(Some(detalle.curso)),
-            Err(AppError::NotFound(_)) => Ok(None),
-            Err(err) => Err(err),
-        }
-    }
-
-    async fn create(&self, data: CursoModel) -> Result<CursoModel, AppError> {
-        let fecha_inicio = data
-            .fecha_inicio
-            .ok_or_else(|| AppError::BadRequest("La fecha de inicio es obligatoria".to_string()))?;
-        let fecha_fin = data
-            .fecha_fin
-            .ok_or_else(|| AppError::BadRequest("La fecha de fin es obligatoria".to_string()))?;
-
-        self
-            .crear_curso(NuevoCurso {
-                nombre: data.nombre,
-                codigo: data.codigo,
-                descripcion: data.descripcion,
-                creditos: data.creditos,
-                horas_teoricas: data.horas_teoricas,
-                horas_practicas: data.horas_practicas,
-                area_conocimiento_id: data.area_conocimiento_id,
-                estado: data.estado,
-                prerequisito: data.prerequisito,
-                periodo: data.periodo,
-                fecha_inicio,
-                fecha_fin,
-                anio_pensum: data.anio_pensum,
-                coordinador_id: data.coordinador_id,
-            })
-            .await
-    }
-
-    async fn update(&self, id: i32, data: CursoModel) -> Result<CursoModel, AppError> {
-        self
-            .editar_curso(
-                id,
-                ActualizarCurso {
-                    nombre: Some(data.nombre),
-                    codigo: Some(data.codigo),
-                    descripcion: data.descripcion,
-                    creditos: Some(data.creditos),
-                    horas_teoricas: Some(data.horas_teoricas),
-                    horas_practicas: Some(data.horas_practicas),
-                    area_conocimiento_id: Some(data.area_conocimiento_id),
-                    estado: Some(data.estado),
-                    prerequisito: data.prerequisito,
-                    periodo: data.periodo,
-                    fecha_inicio: data.fecha_inicio,
-                    fecha_fin: data.fecha_fin,
-                    anio_pensum: data.anio_pensum,
-                    coordinador_id: data.coordinador_id,
-                },
-            )
-            .await
-    }
-
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
-        self.eliminar_curso(id).await
-    }
 }

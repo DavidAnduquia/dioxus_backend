@@ -1,14 +1,17 @@
 use chrono::Utc;
+use axum::extract::FromRef;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
-    Set, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
+    Set, SqlxPostgresConnector,
 };
-use validator::Validate;
+use sqlx::PgPool;
+use std::sync::Arc;
 
 use crate::{
     models::{
         rol,
         usuario::{self, Entity as Usuario, Model as UsuarioModel, NewUsuario, UpdateUsuario},
+        AppState,
     },
     utils::errors::AppError,
 };
@@ -23,12 +26,23 @@ fn is_valid_email(email: &str) -> bool {
 
 #[derive(Debug, Clone)]
 pub struct UsuarioService {
-    db: DatabaseConnection,
+    pool: Arc<Option<PgPool>>,
 }
 
 impl UsuarioService {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
+        Self { pool }
+    }
+
+    fn pool(&self) -> Result<&PgPool, AppError> {
+        self.pool.as_ref().as_ref().ok_or_else(|| {
+            AppError::ServiceUnavailable("Database connection is not available".to_string())
+        })
+    }
+
+    fn connection(&self) -> Result<DatabaseConnection, AppError> {
+        let pool = self.pool()?;
+        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
     }
 
     // Iniciar sesión
@@ -37,6 +51,7 @@ impl UsuarioService {
         identificador: &str,
         contrasena: &str,
     ) -> Result<UsuarioModel, AppError> {
+        let db = self.connection()?;
         let usuario = Usuario::find()
             .filter(
                 usuario::Column::DocumentoNit
@@ -44,40 +59,40 @@ impl UsuarioService {
                     .or(usuario::Column::Correo.eq(identificador)),
             )
             .filter(usuario::Column::Contrasena.eq(contrasena))
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Credenciales inválidas".to_string()))?;
 
         // Actualizar última conexión
         let mut usuario: usuario::ActiveModel = usuario.into();
         usuario.updated_at = Set(Some(Utc::now()));
-        let usuario = usuario.update(&self.db).await?;
+        let usuario = usuario.update(&db).await?;
 
         Ok(usuario)
     }
 
     // Cerrar sesión
     pub async fn logout_usuario(&self, id: i64) -> Result<UsuarioModel, AppError> {
+        let db = self.connection()?;
         let usuario = Usuario::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Usuario no encontrado".to_string()))?;
 
         // Actualizar última conexión
         let mut usuario: usuario::ActiveModel = usuario.into();
         usuario.updated_at = Set(Some(Utc::now()));
-        let usuario = usuario.update(&self.db).await?;
+        let usuario = usuario.update(&db).await?;
 
         Ok(usuario)
     }
 
     // Obtener todos los usuarios con su rol
-    pub async fn obtener_usuarios(&self) -> Result<Vec<usuario::UsuarioConRol>, DbErr> {
-        use sea_orm::QuerySelect;
-        
+    pub async fn obtener_usuarios(&self) -> Result<Vec<usuario::UsuarioConRol>, AppError> {
+        let db = self.connection()?;
         let usuarios = Usuario::find()
             .find_also_related(rol::Entity)
-            .all(&self.db)
+            .all(&db)
             .await?;
 
         let usuarios_con_rol = usuarios
@@ -95,6 +110,7 @@ impl UsuarioService {
         &self,
         nuevo_usuario: NewUsuario,
     ) -> Result<usuario::Model, AppError> {
+        let db = self.connection()?;
         // Validar campos obligatorios
         if nuevo_usuario.nombre.trim().is_empty() {
             return Err(AppError::BadRequest(
@@ -130,7 +146,7 @@ impl UsuarioService {
         // Verificar que el correo no esté en uso
         let existe_correo = Usuario::find()
             .filter(usuario::Column::Correo.eq(&nuevo_usuario.correo))
-            .one(&self.db)
+            .one(&db)
             .await?;
 
         if existe_correo.is_some() {
@@ -144,7 +160,7 @@ impl UsuarioService {
             if !documento.trim().is_empty() {
                 let existe_documento = Usuario::find()
                     .filter(usuario::Column::DocumentoNit.eq(documento))
-                    .one(&self.db)
+                    .one(&db)
                     .await?;
 
                 if existe_documento.is_some() {
@@ -168,7 +184,7 @@ impl UsuarioService {
             ..Default::default()
         };
 
-        let usuario = usuario.insert(&self.db).await?;
+        let usuario = usuario.insert(&db).await?;
         Ok(usuario)
     }
 
@@ -178,8 +194,9 @@ impl UsuarioService {
         id: i64,
         datos_actualizados: UpdateUsuario,
     ) -> Result<usuario::Model, AppError> {
+        let db = self.connection()?;
         let usuario = Usuario::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Usuario no encontrado".to_string()))?;
 
@@ -202,7 +219,7 @@ impl UsuarioService {
             let existe_correo = Usuario::find()
                 .filter(usuario::Column::Correo.eq(&correo))
                 .filter(usuario::Column::Id.ne(id))
-                .one(&self.db)
+                .one(&db)
                 .await?;
 
             if existe_correo.is_some() {
@@ -219,7 +236,7 @@ impl UsuarioService {
                 let existe_documento = Usuario::find()
                     .filter(usuario::Column::DocumentoNit.eq(&documento))
                     .filter(usuario::Column::Id.ne(id))
-                    .one(&self.db)
+                    .one(&db)
                     .await?;
 
                 if existe_documento.is_some() {
@@ -249,7 +266,7 @@ impl UsuarioService {
         }
 
         usuario.updated_at = Set(Some(Utc::now()));
-        let usuario = usuario.update(&self.db).await?;
+        let usuario = usuario.update(&db).await?;
 
         Ok(usuario)
     }
@@ -258,7 +275,15 @@ impl UsuarioService {
     pub async fn obtener_usuario_por_id(
         &self,
         id: i64,
-    ) -> Result<Option<usuario::Model>, DbErr> {
-        Usuario::find_by_id(id).one(&self.db).await
+    ) -> Result<Option<usuario::Model>, AppError> {
+        let db = self.connection()?;
+        let usuario = Usuario::find_by_id(id).one(&db).await?;
+        Ok(usuario)
+    }
+}
+
+impl FromRef<AppState> for UsuarioService {
+    fn from_ref(app_state: &AppState) -> Self {
+        UsuarioService::new(Arc::clone(&app_state.db))
     }
 }

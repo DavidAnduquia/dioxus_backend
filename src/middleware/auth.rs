@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     http::request::Parts,
 };
@@ -10,6 +9,7 @@ use crate::{
     models::{AppState, Claims},
     utils::errors::AppError,
 };
+
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct AuthUser {
@@ -17,7 +17,6 @@ pub struct AuthUser {
     pub email: String,
 }
 
-#[async_trait]
 impl FromRequestParts<AppState> for AuthUser {
     type Rejection = AppError;
 

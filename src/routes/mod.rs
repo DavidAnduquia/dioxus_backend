@@ -1,7 +1,7 @@
 use axum::{
     extract::{Form, State},
     response::{Html, Json},
-    routing::{delete, get, post, put},
+    routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,11 @@ use crate::{handlers, models::AppState};
 
 pub mod roles;
 pub mod usuarios;
+pub mod area_conocimiento;
+pub mod curso;
+pub mod examen;
+pub mod matricula;
+pub mod modulo;
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
@@ -61,6 +66,11 @@ pub fn create_app() -> Router<AppState> {
         .merge(create_routes())
         .merge(roles::roles_routes())  // Agregar rutas de roles
         .merge(usuarios::usuarios_routes()) // Agregar rutas de usuarios
+        .merge(area_conocimiento::area_conocimiento_routes())
+        .merge(curso::curso_routes())
+        .merge(examen::examen_routes())
+        .merge(matricula::matricula_routes())
+        .merge(modulo::modulo_routes())
         .route("/api-docs/openapi.json", get(serve_openapi_spec))
         .route("/swagger-ui", get(serve_swagger_ui))
         .route("/swagger-ui/", get(serve_swagger_ui))

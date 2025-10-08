@@ -1,6 +1,11 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tower::ServiceBuilder;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    cors::CorsLayer, 
+    trace::TraceLayer,
+    compression::CompressionLayer,
+};
 mod config;
 mod database;
 mod entities;
@@ -47,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create application state
     let app_state = models::AppState {
-        db: db_pool,
+        db: Arc::new(db_pool),
         config: config.clone(),
         jwt_encoding_key: jsonwebtoken::EncodingKey::from_secret(config.jwt_secret.as_ref()),
         jwt_decoding_key: jsonwebtoken::DecodingKey::from_secret(config.jwt_secret.as_ref()),
@@ -57,9 +62,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = create_app()
         .layer(
             ServiceBuilder::new()
+                // Compresión automática de respuestas (gzip)
+                // Reduce tamaño de respuestas JSON ~70-80%
+                .layer(CompressionLayer::new())
+                // Logging de requests HTTP
                 .layer(TraceLayer::new_for_http())
+                // CORS permisivo (ajustar en producción)
                 .layer(CorsLayer::permissive())
-                .layer(middleware::auth::auth_layer()),
+                // Autenticación JWT
+                .layer(middleware::auth::auth_layer())
+                // Métricas de performance (solo requests lentos)
+                .layer(axum::middleware::from_fn(middleware::memory::performance_metrics)),
         )
         .with_state(app_state);
 

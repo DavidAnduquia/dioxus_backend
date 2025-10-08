@@ -1,7 +1,11 @@
 pub mod auth;
-// pub mod posts;
 pub mod usuarios;
 pub mod users;
 pub mod roles;
 pub mod health;
 pub mod socket_manager;
+pub mod area_conocimiento;
+pub mod curso;
+pub mod examen;
+pub mod matricula;
+pub mod modulo;

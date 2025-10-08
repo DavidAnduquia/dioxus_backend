@@ -1,15 +1,24 @@
-use async_trait::async_trait;
+use axum::extract::FromRef;
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set,
+    SqlxPostgresConnector,
+};
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use std::sync::Arc;
 
 use crate::{
-    models::area_conocimiento::{self, Entity as AreaConocimiento, Model as AreaConocimientoModel},
+    models::{
+        area_conocimiento::{self, Entity as AreaConocimiento, Model as AreaConocimientoModel},
+        AppState,
+    },
     utils::errors::AppError,
 };
 
 #[derive(Debug, Clone)]
 pub struct AreaConocimientoService {
-    db: DatabaseConnection,
+    pool: Arc<Option<PgPool>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,27 +36,47 @@ pub struct ActualizarArea {
 }
 
 impl AreaConocimientoService {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
+        Self { pool }
     }
 
-    pub async fn obtener_areas(&self) -> Result<Vec<AreaConocimientoModel>, DbErr> {
-        AreaConocimiento::find()
+    fn pool(&self) -> Result<&PgPool, AppError> {
+        self.pool.as_ref().as_ref().ok_or_else(|| {
+            AppError::ServiceUnavailable("Database connection is not available".to_string())
+        })
+    }
+
+    fn connection(&self) -> Result<DatabaseConnection, AppError> {
+        let pool = self.pool()?;
+        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
+    }
+
+    pub async fn obtener_areas(&self) -> Result<Vec<AreaConocimientoModel>, AppError> {
+        let db = self.connection()?;
+        let areas = AreaConocimiento::find()
             .order_by_desc(area_conocimiento::Column::CreatedAt)
-            .all(&self.db)
-            .await
+            .all(&db)
+            .await?;
+        Ok(areas)
     }
 
-    pub async fn obtener_area_por_id(&self, id: i32) -> Result<Option<AreaConocimientoModel>, DbErr> {
-        AreaConocimiento::find_by_id(id).one(&self.db).await
+    pub async fn obtener_area_por_id(
+        &self,
+        id: i32,
+    ) -> Result<Option<AreaConocimientoModel>, AppError> {
+        let db = self.connection()?;
+        let area = AreaConocimiento::find_by_id(id).one(&db).await?;
+        Ok(area)
     }
 
-    pub async fn obtener_areas_activas(&self) -> Result<Vec<AreaConocimientoModel>, DbErr> {
-        AreaConocimiento::find()
+    pub async fn obtener_areas_activas(&self) -> Result<Vec<AreaConocimientoModel>, AppError> {
+        let db = self.connection()?;
+        let areas = AreaConocimiento::find()
             .filter(area_conocimiento::Column::Estado.eq(true))
             .order_by_asc(area_conocimiento::Column::Nombre)
-            .all(&self.db)
-            .await
+            .all(&db)
+            .await?;
+        Ok(areas)
     }
 
     pub async fn crear_area(
@@ -58,17 +87,18 @@ impl AreaConocimientoService {
             return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
         }
 
+        let db = self.connection()?;
         let ahora = Utc::now();
         let area = area_conocimiento::ActiveModel {
+            id: Set(0), // Auto-increment field
             nombre: Set(nueva_area.nombre),
             descripcion: Set(nueva_area.descripcion),
             estado: Set(nueva_area.estado),
             created_at: Set(Some(ahora)),
             updated_at: Set(Some(ahora)),
-            ..Default::default()
         };
 
-        let area_creada = area.insert(&self.db).await?;
+        let area_creada = area.insert(&db).await?;
         Ok(area_creada)
     }
 
@@ -77,8 +107,9 @@ impl AreaConocimientoService {
         id: i32,
         datos_actualizados: ActualizarArea,
     ) -> Result<AreaConocimientoModel, AppError> {
+        let db = self.connection()?;
         let area = AreaConocimiento::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Área de conocimiento no encontrada".to_string()))?;
 
@@ -98,13 +129,14 @@ impl AreaConocimientoService {
         }
 
         area.updated_at = Set(Some(Utc::now()));
-        let area_actualizada = area.update(&self.db).await?;
+        let area_actualizada = area.update(&db).await?;
         Ok(area_actualizada)
     }
 
     pub async fn cambiar_estado(&self, id: i32, estado: bool) -> Result<AreaConocimientoModel, AppError> {
+        let db = self.connection()?;
         let area = AreaConocimiento::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Área de conocimiento no encontrada".to_string()))?;
 
@@ -112,48 +144,23 @@ impl AreaConocimientoService {
         area.estado = Set(estado);
         area.updated_at = Set(Some(Utc::now()));
 
-        let area_actualizada = area.update(&self.db).await?;
+        let area_actualizada = area.update(&db).await?;
         Ok(area_actualizada)
     }
 
     pub async fn eliminar_area(&self, id: i32) -> Result<(), AppError> {
+        let db = self.connection()?;
         let area = AreaConocimiento::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Área de conocimiento no encontrada".to_string()))?;
-
-        area.delete(&self.db).await?;
+        area.delete(&db).await?;
         Ok(())
     }
 }
 
-#[async_trait]
-impl crate::traits::service::CrudService<AreaConocimientoModel> for AreaConocimientoService {
-    async fn get_all(&self) -> Result<Vec<AreaConocimientoModel>, AppError> {
-        self.obtener_areas().await.map_err(Into::into)
-    }
-
-    async fn get_by_id(&self, id: i32) -> Result<Option<AreaConocimientoModel>, AppError> {
-        self.obtener_area_por_id(id).await.map_err(Into::into)
-    }
-
-    async fn create(&self, data: AreaConocimientoModel) -> Result<AreaConocimientoModel, AppError> {
-        self.crear_area(NuevaArea {
-            nombre: data.nombre,
-            descripcion: data.descripcion,
-            estado: data.estado,
-        }).await
-    }
-
-    async fn update(&self, id: i32, data: AreaConocimientoModel) -> Result<AreaConocimientoModel, AppError> {
-        self.actualizar_area(id, ActualizarArea {
-            nombre: Some(data.nombre),
-            descripcion: data.descripcion,
-            estado: Some(data.estado),
-        }).await
-    }
-
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
-        self.eliminar_area(id).await
+impl FromRef<AppState> for AreaConocimientoService {
+    fn from_ref(state: &AppState) -> Self {
+        AreaConocimientoService::new(Arc::clone(&state.db))
     }
 }

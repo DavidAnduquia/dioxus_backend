@@ -1,6 +1,11 @@
 pub mod rol_service;
 pub mod socket_service;
 pub mod usuario_service;
+pub mod area_conocimiento_service;
+pub mod curso_service;
+pub mod examen_service;
+pub mod matricula_service;
+pub mod modulo_service;
 
 use sqlx::PgPool;
 use crate::{models, utils::errors::AppError};

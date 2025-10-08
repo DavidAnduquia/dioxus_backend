@@ -1,17 +1,18 @@
-use async_trait::async_trait;
+use axum::extract::FromRef;
 use chrono::Utc;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
-};
-
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set, SqlxPostgresConnector, Order};
 use crate::{
     models::modulo::{self, Entity as Modulo, Model as ModuloModel},
+    models::AppState,
     utils::errors::AppError,
 };
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct ModuloService {
-    db: DatabaseConnection,
+    pool: Arc<Option<PgPool>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,8 +33,19 @@ pub struct ActualizarModulo {
 }
 
 impl ModuloService {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
+        Self { pool }
+    }
+
+    fn pool(&self) -> Result<&PgPool, AppError> {
+        self.pool.as_ref().as_ref().ok_or_else(|| {
+            AppError::ServiceUnavailable("Database connection is not available".to_string())
+        })
+    }
+
+    fn connection(&self) -> Result<DatabaseConnection, AppError> {
+        let pool = self.pool()?;
+        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
     }
 
     pub async fn crear_modulo(
@@ -44,8 +56,10 @@ impl ModuloService {
             return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
         }
 
+        let db = self.connection()?;
         let ahora = Utc::now();
         let modulo = modulo::ActiveModel {
+            id: Set(0), // Auto-increment field
             curso_id: Set(nuevo_modulo.curso_id),
             nombre: Set(nuevo_modulo.nombre),
             descripcion: Set(nuevo_modulo.descripcion),
@@ -53,10 +67,9 @@ impl ModuloService {
             visible: Set(nuevo_modulo.visible),
             created_at: Set(Some(ahora)),
             updated_at: Set(Some(ahora)),
-            ..Default::default()
         };
 
-        let modulo_creado = modulo.insert(&self.db).await?;
+        let modulo_creado = modulo.insert(&db).await?;
         Ok(modulo_creado)
     }
 
@@ -64,10 +77,11 @@ impl ModuloService {
         &self,
         curso_id: i32,
     ) -> Result<Vec<ModuloModel>, DbErr> {
+        let db = self.connection().map_err(|e| DbErr::Custom(e.to_string()))?;
         Modulo::find()
             .filter(modulo::Column::CursoId.eq(curso_id))
-            .order_by_asc(modulo::Column::Orden)
-            .all(&self.db)
+            .order_by(modulo::Column::Orden, Order::Asc)
+            .all(&db)
             .await
     }
 
@@ -75,7 +89,8 @@ impl ModuloService {
         &self,
         id: i32,
     ) -> Result<Option<ModuloModel>, DbErr> {
-        Modulo::find_by_id(id).one(&self.db).await
+        let db = self.connection().map_err(|e| DbErr::Custom(e.to_string()))?;
+        Modulo::find_by_id(id).one(&db).await
     }
 
     pub async fn actualizar_modulo(
@@ -83,8 +98,9 @@ impl ModuloService {
         id: i32,
         datos_actualizados: ActualizarModulo,
     ) -> Result<ModuloModel, AppError> {
+        let db = self.connection()?;
         let modulo = Modulo::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Módulo no encontrado".to_string()))?;
 
@@ -111,65 +127,25 @@ impl ModuloService {
         }
 
         modulo.updated_at = Set(Some(ahora));
-        let modulo_actualizado = modulo.update(&self.db).await?;
+        let modulo_actualizado = modulo.update(&db).await?;
 
         Ok(modulo_actualizado)
     }
 
     pub async fn eliminar_modulo(&self, id: i32) -> Result<(), AppError> {
+        let db = self.connection()?;
         let modulo = Modulo::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Módulo no encontrado".to_string()))?;
 
-        modulo.delete(&self.db).await?;
+        modulo.delete(&db).await?;
         Ok(())
     }
 }
 
-#[async_trait]
-impl crate::traits::service::CrudService<ModuloModel> for ModuloService {
-    async fn get_all(&self) -> Result<Vec<ModuloModel>, AppError> {
-        Modulo::find()
-            .order_by_asc(modulo::Column::Orden)
-            .all(&self.db)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn get_by_id(&self, id: i32) -> Result<Option<ModuloModel>, AppError> {
-        self.obtener_modulo_por_id(id).await.map_err(Into::into)
-    }
-
-    async fn create(&self, data: ModuloModel) -> Result<ModuloModel, AppError> {
-        self.crear_modulo(NuevoModulo {
-            curso_id: data.curso_id,
-            nombre: data.nombre,
-            descripcion: data.descripcion,
-            orden: data.orden,
-            visible: data.visible,
-        })
-        .await
-    }
-
-    async fn update(
-        &self,
-        id: i32,
-        data: ModuloModel,
-    ) -> Result<ModuloModel, AppError> {
-        self.actualizar_modulo(
-            id,
-            ActualizarModulo {
-                nombre: Some(data.nombre),
-                descripcion: data.descripcion,
-                orden: Some(data.orden),
-                visible: Some(data.visible),
-            },
-        )
-        .await
-    }
-
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
-        self.eliminar_modulo(id).await
+impl FromRef<AppState> for ModuloService {
+    fn from_ref(state: &AppState) -> Self {
+        ModuloService::new(Arc::clone(&state.db))
     }
 }

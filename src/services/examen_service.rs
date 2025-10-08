@@ -1,17 +1,19 @@
-use async_trait::async_trait;
-use chrono::Utc;
+use axum::extract::FromRef;
+use chrono::{DateTime, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, Set,
+    SqlxPostgresConnector,
 };
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use std::sync::Arc;
 
-use crate::{
-    models::examen::{self, Entity as Examen, Model as ExamenModel},
-    utils::errors::AppError,
-};
+use crate::models::{AppState, examen::{self, Entity as Examen, Model as ExamenModel}};
+use crate::utils::errors::AppError;
 
 #[derive(Debug, Clone)]
 pub struct ExamenService {
-    db: DatabaseConnection,
+    pool: Arc<Option<PgPool>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,8 +42,19 @@ pub struct ActualizarExamen {
 }
 
 impl ExamenService {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
+        Self { pool }
+    }
+
+    fn pool(&self) -> Result<&PgPool, AppError> {
+        self.pool.as_ref().as_ref().ok_or_else(|| {
+            AppError::ServiceUnavailable("Database connection is not available".to_string())
+        })
+    }
+
+    fn connection(&self) -> Result<DatabaseConnection, AppError> {
+        let pool = self.pool()?;
+        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
     }
 
     pub async fn crear_examen(
@@ -61,6 +74,7 @@ impl ExamenService {
             return Err(AppError::BadRequest("Los intentos permitidos deben ser mayor a 0".to_string()));
         }
 
+        let db = self.connection()?;
         let ahora = Utc::now();
         let examen = examen::ActiveModel {
             curso_id: Set(nuevo_examen.curso_id),
@@ -77,7 +91,7 @@ impl ExamenService {
             ..Default::default()
         };
 
-        let examen_creado = examen.insert(&self.db).await?;
+        let examen_creado = examen.insert(&db).await?;
         Ok(examen_creado)
     }
 
@@ -85,9 +99,10 @@ impl ExamenService {
         &self,
         curso_id: i32,
     ) -> Result<Vec<ExamenModel>, DbErr> {
+        let db = self.connection().map_err(|e| DbErr::Custom(e.to_string()))?;
         Examen::find()
             .filter(examen::Column::CursoId.eq(curso_id))
-            .all(&self.db)
+            .all(&db)
             .await
     }
 
@@ -95,7 +110,8 @@ impl ExamenService {
         &self,
         id: i32,
     ) -> Result<Option<ExamenModel>, DbErr> {
-        Examen::find_by_id(id).one(&self.db).await
+        let db = self.connection().map_err(|e| DbErr::Custom(e.to_string()))?;
+        Examen::find_by_id(id).one(&db).await
     }
 
     pub async fn actualizar_examen(
@@ -103,8 +119,9 @@ impl ExamenService {
         id: i32,
         datos_actualizados: ActualizarExamen,
     ) -> Result<ExamenModel, AppError> {
+        let db = self.connection()?;
         let examen = Examen::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Examen no encontrado".to_string()))?;
 
@@ -147,72 +164,25 @@ impl ExamenService {
         }
 
         examen.updated_at = Set(Some(ahora));
-        let examen_actualizado = examen.update(&self.db).await?;
+        let examen_actualizado = examen.update(&db).await?;
 
         Ok(examen_actualizado)
     }
 
     pub async fn eliminar_examen(&self, id: i32) -> Result<(), AppError> {
+        let db = self.connection()?;
         let examen = Examen::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Examen no encontrado".to_string()))?;
 
-        examen.delete(&self.db).await?;
+        examen.delete(&db).await?;
         Ok(())
     }
 }
 
-#[async_trait]
-impl crate::traits::service::CrudService<ExamenModel> for ExamenService {
-    async fn get_all(&self) -> Result<Vec<ExamenModel>, AppError> {
-        Examen::find()
-            .all(&self.db)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn get_by_id(&self, id: i32) -> Result<Option<ExamenModel>, AppError> {
-        self.obtener_examen_por_id(id).await.map_err(Into::into)
-    }
-
-    async fn create(&self, data: ExamenModel) -> Result<ExamenModel, AppError> {
-        self.crear_examen(NuevoExamen {
-            curso_id: data.curso_id,
-            nombre: data.nombre,
-            descripcion: data.descripcion,
-            fecha_inicio: data.fecha_inicio,
-            fecha_fin: data.fecha_fin,
-            duracion_minutos: data.duracion_minutos,
-            intentos_permitidos: data.intentos_permitidos,
-            mostrar_resultados: data.mostrar_resultados,
-            estado: data.estado,
-        })
-        .await
-    }
-
-    async fn update(
-        &self,
-        id: i32,
-        data: ExamenModel,
-    ) -> Result<ExamenModel, AppError> {
-        self.actualizar_examen(
-            id,
-            ActualizarExamen {
-                nombre: Some(data.nombre),
-                descripcion: data.descripcion,
-                fecha_inicio: Some(data.fecha_inicio),
-                fecha_fin: Some(data.fecha_fin),
-                duracion_minutos: Some(data.duracion_minutos),
-                intentos_permitidos: Some(data.intentos_permitidos),
-                mostrar_resultados: Some(data.mostrar_resultados),
-                estado: Some(data.estado),
-            },
-        )
-        .await
-    }
-
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
-        self.eliminar_examen(id).await
+impl FromRef<AppState> for ExamenService {
+    fn from_ref(state: &AppState) -> Self {
+        ExamenService::new(Arc::clone(&state.db))
     }
 }

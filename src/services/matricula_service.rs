@@ -1,66 +1,95 @@
-#[async_trait::async_trait]
+use axum::extract::FromRef;
+use chrono::Utc;
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set, SqlxPostgresConnector, Order};
+use sqlx::PgPool;
+use std::sync::Arc;
+
+use crate::{
+    models::{
+        curso::{self, Entity as Curso},
+        historial_curso_estudiante::{self, Entity as Historial, Model as HistorialModel},
+        usuario::{self, Entity as Usuario},
+        AppState,
+    },
+    utils::errors::AppError,
+};
+
 pub trait MatriculaServiceTrait {
     async fn matricular_estudiante(
         &self,
         estudiante_id: i64,
-        curso_id: i32
+        curso_id: i32,
     ) -> Result<HistorialModel, AppError>;
 
     async fn desmatricular_estudiante(
         &self,
         estudiante_id: i64,
-        curso_id: i32
+        curso_id: i32,
     ) -> Result<HistorialModel, AppError>;
 
     async fn obtener_matriculas_estudiante(
         &self,
-        estudiante_id: i64
+        estudiante_id: i64,
     ) -> Result<Vec<HistorialModel>, AppError>;
 
     async fn obtener_matriculas_curso(
         &self,
-        curso_id: i32
+        curso_id: i32,
     ) -> Result<Vec<HistorialModel>, AppError>;
 }
 
 #[derive(Debug, Clone)]
 pub struct MatriculaService {
-    db: DatabaseConnection,
+    pool: Arc<Option<PgPool>>,
 }
 
-#[async_trait::async_trait]
+impl MatriculaService {
+    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
+        Self { pool }
+    }
+
+    fn pool(&self) -> Result<&PgPool, AppError> {
+        self.pool.as_ref().as_ref().ok_or_else(|| {
+            AppError::ServiceUnavailable("Database connection is not available".to_string())
+        })
+    }
+
+    fn connection(&self) -> Result<DatabaseConnection, AppError> {
+        let pool = self.pool()?;
+        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
+    }
+}
+
 impl MatriculaServiceTrait for MatriculaService {
     async fn matricular_estudiante(
         &self,
         estudiante_id: i64,
-        curso_id: i32
+        curso_id: i32,
     ) -> Result<HistorialModel, AppError> {
-        // Verificar que el estudiante existe
-        let estudiante = Usuario::find_by_id(estudiante_id)
-            .one(&self.db)
+        let db = self.connection()?;
+
+        Usuario::find_by_id(estudiante_id)
+            .one(&db)
             .await?
-            .ok_or(AppError::NotFound("Estudiante no encontrado".into()))?;
+            .ok_or_else(|| AppError::NotFound("Estudiante no encontrado".into()))?;
 
-        // Verificar que el curso existe
-        let _curso = Curso::find_by_id(curso_id)
-            .one(&self.db)
+        Curso::find_by_id(curso_id)
+            .one(&db)
             .await?
-            .ok_or(AppError::NotFound("Curso no encontrado".into()))?;
+            .ok_or_else(|| AppError::NotFound("Curso no encontrado".into()))?;
 
-        // Verificar matrícula existente
-        let existe = Historial::find()
-            .filter(historial::Column::EstudianteId.eq(estudiante_id))
-            .filter(historial::Column::CursoId.eq(curso_id))
-            .one(&self.db)
-            .await?;
-
-        if existe.is_some() {
+        if Historial::find()
+            .filter(historial_curso_estudiante::Column::EstudianteId.eq(estudiante_id))
+            .filter(historial_curso_estudiante::Column::CursoId.eq(curso_id))
+            .one(&db)
+            .await?
+            .is_some()
+        {
             return Err(AppError::BadRequest("Estudiante ya matriculado".into()));
         }
 
-        // Crear matrícula
         let ahora = Utc::now();
-        let matricula = historial::ActiveModel {
+        let matricula = historial_curso_estudiante::ActiveModel {
             estudiante_id: Set(estudiante_id),
             curso_id: Set(curso_id),
             fecha_inscripcion: Set(ahora),
@@ -70,72 +99,73 @@ impl MatriculaServiceTrait for MatriculaService {
             ..Default::default()
         };
 
-        Ok(matricula.insert(&self.db).await?)
+        Ok(matricula.insert(&db).await?)
     }
 
     async fn desmatricular_estudiante(
         &self,
         estudiante_id: i64,
-        curso_id: i32
+        curso_id: i32,
     ) -> Result<HistorialModel, AppError> {
-        // Verificar que el estudiante existe
-        let estudiante = Usuario::find_by_id(estudiante_id)
-            .one(&self.db)
+        let db = self.connection()?;
+
+        Usuario::find_by_id(estudiante_id)
+            .one(&db)
             .await?
-            .ok_or(AppError::NotFound("Estudiante no encontrado".into()))?;
+            .ok_or_else(|| AppError::NotFound("Estudiante no encontrado".into()))?;
 
-        // Verificar que el curso existe
-        let _curso = Curso::find_by_id(curso_id)
-            .one(&self.db)
+        Curso::find_by_id(curso_id)
+            .one(&db)
             .await?
-            .ok_or(AppError::NotFound("Curso no encontrado".into()))?;
+            .ok_or_else(|| AppError::NotFound("Curso no encontrado".into()))?;
 
-        // Verificar matrícula existente
-        let existe = Historial::find()
-            .filter(historial::Column::EstudianteId.eq(estudiante_id))
-            .filter(historial::Column::CursoId.eq(curso_id))
-            .one(&self.db)
-            .await?;
+        let matricula = Historial::find()
+            .filter(historial_curso_estudiante::Column::EstudianteId.eq(estudiante_id))
+            .filter(historial_curso_estudiante::Column::CursoId.eq(curso_id))
+            .one(&db)
+            .await?
+            .ok_or_else(|| AppError::BadRequest("Estudiante no matriculado".into()))?;
 
-        if existe.is_none() {
-            return Err(AppError::BadRequest("Estudiante no matriculado".into()));
-        }
-
-        // Desmatricular
         let ahora = Utc::now();
-        let matricula = existe.unwrap();
-        let matricula_actualizada = matricula.update(&self.db, Set(historial::Column::Estado.eq("inactivo".into()))
-            .await?
-            .ok_or(AppError::InternalServerError("Error al desmatricular".into()))?;
+        let mut matricula: historial_curso_estudiante::ActiveModel = matricula.into();
+        matricula.estado = Set("inactivo".into());
+        matricula.updated_at = Set(Some(ahora));
 
+        let matricula_actualizada = matricula.update(&db).await?;
         Ok(matricula_actualizada)
     }
 
     async fn obtener_matriculas_estudiante(
         &self,
-        estudiante_id: i64
+        estudiante_id: i64,
     ) -> Result<Vec<HistorialModel>, AppError> {
+        let db = self.connection()?;
         let matriculas = Historial::find()
-            .filter(historial::Column::EstudianteId.eq(estudiante_id))
-            .order_by_asc(historial::Column::FechaInscripcion)
-            .all(&self.db)
-            .await?
-            .ok_or(AppError::InternalServerError("Error al obtener matrículas".into()))?;
+            .filter(historial_curso_estudiante::Column::EstudianteId.eq(estudiante_id))
+            .order_by(historial_curso_estudiante::Column::FechaInscripcion, Order::Asc)
+            .all(&db)
+            .await?;
 
         Ok(matriculas)
     }
 
     async fn obtener_matriculas_curso(
         &self,
-        curso_id: i32
+        curso_id: i32,
     ) -> Result<Vec<HistorialModel>, AppError> {
+        let db = self.connection()?;
         let matriculas = Historial::find()
-            .filter(historial::Column::CursoId.eq(curso_id))
-            .order_by_asc(historial::Column::FechaInscripcion)
-            .all(&self.db)
-            .await?
-            .ok_or(AppError::InternalServerError("Error al obtener matrículas".into()))?;
+            .filter(historial_curso_estudiante::Column::CursoId.eq(curso_id))
+            .order_by(historial_curso_estudiante::Column::FechaInscripcion, Order::Asc)
+            .all(&db)
+            .await?;
 
         Ok(matriculas)
+    }
+}
+
+impl FromRef<AppState> for MatriculaService {
+    fn from_ref(state: &AppState) -> Self {
+        MatriculaService::new(Arc::clone(&state.db))
     }
 }

@@ -1,17 +1,40 @@
-use axum::{middleware::Next, response::Response, http::Request};
-use sysinfo::{System, SystemExt};
+// ⚠️ DEPRECADO: Este middleware NO mejora el rendimiento.
+//
+// Problemas del código original:
+// 1. refresh_memory() NO libera memoria, solo lee estadísticas del SO
+// 2. Añade latencia innecesaria a cada request (~5-10ms)
+// 3. Rust maneja memoria automáticamente con ownership/borrowing
+// 4. spawn_blocking() crea overhead sin beneficio
+//
+// Para monitoreo de memoria real, usar:
+// - Prometheus metrics con tower-http
+// - Tokio console para debugging
+// - jemalloc como allocator global (ver Cargo.toml)
 
-pub async fn memory_cleaner<B>(req: Request<B>, next: Next<B>) -> Response {
-    let mut sys = System::new();
+use axum::{
+    extract::Request,
+    middleware::Next,
+    response::Response,
+};
+
+/// Middleware de métricas de rendimiento (sin overhead significativo)
+pub async fn performance_metrics(req: Request, next: Next) -> Response {
+    let start = std::time::Instant::now();
+    let method = req.method().clone();
+    let uri = req.uri().clone();
     
     let response = next.run(req).await;
     
-    // Liberar memoria después de cada request
-    sys.refresh_memory();
-    if sys.used_memory() > 50 * 1024 * 1024 { // Si usa más de 50MB
-        tokio::task::spawn_blocking(|| {
-            System::new_all().refresh_all();
-        });
+    let elapsed = start.elapsed();
+    
+    // Solo loguear requests lentos (>100ms)
+    if elapsed.as_millis() > 100 {
+        tracing::warn!(
+            method = %method,
+            uri = %uri,
+            duration_ms = elapsed.as_millis(),
+            "Slow request detected"
+        );
     }
     
     response

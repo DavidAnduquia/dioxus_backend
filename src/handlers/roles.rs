@@ -24,7 +24,7 @@ pub async fn list_roles(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Rol>>, String> {
     let db = state.get_db().map_err(|e| e.to_string())?;
-    RolService::obtenerRoles(db)
+    RolService::obtener_roles(db)
         .await
         .map(Json)
         .map_err(|e| e.to_string())

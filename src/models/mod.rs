@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
@@ -33,31 +34,11 @@ pub mod profesor_curso;
 pub mod usuario;
 
 // Re-export models for easier access
-pub use actividad::Entity as Actividad;
-pub use area_conocimiento::Entity as AreaConocimiento;
-pub use calificacion::Entity as Calificacion;
-pub use contenido_plantilla::Entity as ContenidoPlantilla;
-pub use contenido_transversal::Entity as ContenidoTransversal;
-pub use curso::Entity as Curso;
-pub use evaluacion_calificacion::Entity as EvaluacionCalificacion;
-pub use evaluacion_sesion::Entity as EvaluacionSesion;
-pub use evento_programado::Entity as EventoProgramado;
-pub use examen::Entity as Examen;
-pub use historial_curso_actividad::Entity as HistorialCursoActividad;
-pub use historial_curso_estudiante::Entity as HistorialCursoEstudiante;
-pub use modulo::Entity as Modulo;
-pub use modulo_archivo::Entity as ModuloArchivo;
-pub use notificacion::Entity as Notificacion;
-pub use plantilla_curso::Entity as PlantillaCurso;
-pub use portafolio::Entity as Portafolio;
-pub use profesor_curso::Entity as ProfesorCurso;
-pub use rol::Entity as Rol;
-pub use usuario::Entity as Usuario;
 
 // Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
-    pub db: Option<PgPool>,
+    pub db: Arc<Option<PgPool>>,
     #[allow(dead_code)]
     pub config: Config,
     pub jwt_encoding_key: EncodingKey,
@@ -72,7 +53,7 @@ impl AppState {
     
     /// Obtiene el pool de base de datos o retorna un error
     pub fn get_db(&self) -> Result<&PgPool, crate::utils::errors::AppError> {
-        self.db.as_ref().ok_or_else(|| {
+        self.db.as_ref().as_ref().ok_or_else(|| {
             crate::utils::errors::AppError::ServiceUnavailable(
                 "Database connection is not available".to_string()
             )
@@ -135,37 +116,7 @@ impl From<User> for UserResponse {
         }
     }
 }
-
-// Post models (example entity)
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
-pub struct Post {
-    pub id: Uuid,
-    pub title: String,
-    pub content: String,
-    pub author_id: Uuid,
-    pub published: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize, Validate)]
-pub struct CreatePostRequest {
-    #[validate(length(min = 1, max = 255))]
-    pub title: String,
-    #[validate(length(min = 1))]
-    pub content: String,
-    pub published: Option<bool>,
-}
-
-#[derive(Debug, Deserialize, Validate)]
-pub struct UpdatePostRequest {
-    #[validate(length(min = 1, max = 255))]
-    pub title: Option<String>,
-    #[validate(length(min = 1))]
-    pub content: Option<String>,
-    pub published: Option<bool>,
-}
-
+  
 // JWT Claims
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Claims {

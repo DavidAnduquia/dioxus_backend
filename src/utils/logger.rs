@@ -41,19 +41,19 @@ impl<'a> MakeWriter<'a> for LockedMakeWriter {
 /// 
 /// # Returns
 /// * `Result<(), Box<dyn std::error::Error>>` - Ok si se inicializó correctamente
-pub fn init_logger_console_only() -> Result<(), Box<dyn std::error::Error>> {
-    // Filtro de niveles desde variable de entorno o predeterminado
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+// pub fn init_logger_console_only() -> Result<(), Box<dyn std::error::Error>> {
+//     // Filtro de niveles desde variable de entorno o predeterminado
+//     let env_filter = EnvFilter::try_from_default_env()
+//         .unwrap_or_else(|_| EnvFilter::new("info"));
 
-    // Solo consola, sin archivo
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(fmt::layer().compact())
-        .init();
+//     // Solo consola, sin archivo
+//     tracing_subscriber::registry()
+//         .with(env_filter)
+//         .with(fmt::layer().compact())
+//         .init();
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 /// Inicializa el sistema de logging con archivo (consume más memoria)
 /// 

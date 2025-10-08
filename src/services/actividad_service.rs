@@ -1,6 +1,5 @@
-use async_trait::async_trait;
 use chrono::{NaiveTime, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, Set};
 
 use crate::{
     models::actividad::{self, Entity as Actividad, Model as ActividadModel, NewActividad, UpdateActividad},
@@ -115,46 +114,5 @@ impl ActividadService {
 
         actividad.delete(&self.db).await?;
         Ok(())
-    }
-}
-
-#[async_trait]
-impl crate::traits::service::CrudService<ActividadModel> for ActividadService {
-    async fn get_all(&self) -> Result<Vec<ActividadModel>, AppError> {
-        self.obtener_actividades().await.map_err(Into::into)
-    }
-
-    async fn get_by_id(&self, id: i32) -> Result<Option<ActividadModel>, AppError> {
-        self.obtener_actividad_por_id(id).await.map_err(Into::into)
-    }
-
-    async fn create(&self, data: ActividadModel) -> Result<ActividadModel, AppError> {
-        self.crear_actividad(NewActividad {
-            curso_id: data.curso_id,
-            profesor_id: data.profesor_id,
-            nombre: data.nombre,
-            descripcion: data.descripcion,
-            fecha_inicio: data.fecha_inicio,
-            fecha_fin: data.fecha_fin,
-            tipo_actividad: data.tipo_actividad,
-            privacidad: data.privacidad,
-        }).await
-    }
-
-    async fn update(&self, id: i32, data: ActividadModel) -> Result<ActividadModel, AppError> {
-        self.actualizar_actividad(id, UpdateActividad {
-            curso_id: Some(data.curso_id),
-            profesor_id: Some(data.profesor_id),
-            nombre: Some(data.nombre),
-            descripcion: data.descripcion,
-            fecha_inicio: Some(data.fecha_inicio),
-            fecha_fin: Some(data.fecha_fin),
-            tipo_actividad: Some(data.tipo_actividad),
-            privacidad: Some(data.privacidad),
-        }).await
-    }
-
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
-        self.eliminar_actividad(id).await
     }
 }
