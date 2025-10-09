@@ -2,13 +2,13 @@ use axum::extract::FromRef;
 use chrono::{DateTime, Datelike, Utc};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
-    QueryFilter, QueryOrder, Set, TransactionTrait, SqlxPostgresConnector, Order
+    QueryFilter, QueryOrder, Set, TransactionTrait, Order
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::sync::Arc;
 
 use crate::{
+    database::DbExecutor,
     models::{
         actividad::{self, Entity as Actividad, Model as ActividadModel},
         area_conocimiento::{Entity as AreaConocimientoEntity, Model as AreaConocimiento},
@@ -21,14 +21,16 @@ use crate::{
     },
     utils::errors::AppError,
 };
+
 #[derive(Debug, Clone)]
 pub struct CursoService {
-    pool: Arc<Option<PgPool>>,
+    db: DbExecutor,
 }
 
 impl FromRef<AppState> for CursoService {
     fn from_ref(state: &AppState) -> Self {
-        CursoService::new(Arc::clone(&state.db))
+        let executor = state.db.clone().expect("Database connection is not available");
+        CursoService::new(executor)
     }
 }
 
@@ -83,23 +85,20 @@ pub struct AulaCurso {
 }
 
 impl CursoService {
-    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
-        Self { pool }
+    pub fn new(db: DbExecutor) -> Self {
+        Self { db }
     }
 
-    fn pool(&self) -> Result<&PgPool, AppError> {
-        self.pool.as_ref().as_ref().ok_or_else(|| {
-            AppError::ServiceUnavailable("Database connection is not available".to_string())
-        })
+    fn pool(&self) -> &PgPool {
+        self.db.pool()
     }
 
-    fn connection(&self) -> Result<DatabaseConnection, AppError> {
-        let pool = self.pool()?;
-        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
+    fn connection(&self) -> DatabaseConnection {
+        self.db.connection()
     }
 
     pub async fn obtener_cursos(&self) -> Result<Vec<CursoDetallado>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let cursos = Curso::find()
             .order_by_desc(curso::Column::CreatedAt)
             .find_also_related(AreaConocimientoEntity)
@@ -117,7 +116,7 @@ impl CursoService {
         &self,
         id: i32,
     ) -> Result<CursoDetallado, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let result = Curso::find_by_id(id)
             .find_also_related(AreaConocimientoEntity)
             .one(&db)
@@ -145,7 +144,7 @@ impl CursoService {
         }
 
         // Validar área de conocimiento
-        let db = self.connection()?;
+        let db = self.connection();
         let area = AreaConocimientoEntity::find_by_id(datos.area_conocimiento_id)
             .one(&db)
             .await
@@ -237,7 +236,7 @@ impl CursoService {
         id: i32,
         datos: ActualizarCurso,
     ) -> Result<CursoModel, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let mut txn = db.begin().await.map_err(map_db_err)?;
 
         let mut curso_model = Curso::find_by_id(id)
@@ -342,7 +341,7 @@ impl CursoService {
     }
 
     pub async fn eliminar_curso(&self, id: i32) -> Result<(), AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let mut txn = db.begin().await.map_err(map_db_err)?;
 
         let curso = Curso::find_by_id(id)
@@ -367,7 +366,7 @@ impl CursoService {
         &self,
         plantilla_id: i32,
     ) -> Result<Vec<CursoModel>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let cursos = Curso::find()
             .filter(curso::Column::PlantillaBaseId.eq(plantilla_id))
             .all(&db)
@@ -382,7 +381,7 @@ impl CursoService {
         area_conocimiento_id: i32,
         periodo: &str,
     ) -> Result<Vec<CursoDetallado>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let cursos = Curso::find()
             .filter(curso::Column::AreaConocimientoId.eq(area_conocimiento_id))
             .filter(curso::Column::Periodo.eq(periodo))
@@ -398,7 +397,7 @@ impl CursoService {
     }
 
     pub async fn obtener_aula_por_curso_id(&self, id: i32) -> Result<AulaCurso, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let curso = Curso::find_by_id(id)
             .one(&db)
             .await

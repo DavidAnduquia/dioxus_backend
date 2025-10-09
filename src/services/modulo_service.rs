@@ -1,18 +1,18 @@
 use axum::extract::FromRef;
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set, SqlxPostgresConnector, Order};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set, Order};
 use crate::{
+    database::DbExecutor,
     models::modulo::{self, Entity as Modulo, Model as ModuloModel},
     models::AppState,
     utils::errors::AppError,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct ModuloService {
-    pool: Arc<Option<PgPool>>,
+    db: DbExecutor,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,19 +33,16 @@ pub struct ActualizarModulo {
 }
 
 impl ModuloService {
-    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
-        Self { pool }
+    pub fn new(db: DbExecutor) -> Self {
+        Self { db }
     }
 
-    fn pool(&self) -> Result<&PgPool, AppError> {
-        self.pool.as_ref().as_ref().ok_or_else(|| {
-            AppError::ServiceUnavailable("Database connection is not available".to_string())
-        })
+    fn pool(&self) -> &PgPool {
+        self.db.pool()
     }
 
-    fn connection(&self) -> Result<DatabaseConnection, AppError> {
-        let pool = self.pool()?;
-        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
+    fn connection(&self) -> DatabaseConnection {
+        self.db.connection()
     }
 
     pub async fn crear_modulo(
@@ -56,7 +53,7 @@ impl ModuloService {
             return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
         }
 
-        let db = self.connection()?;
+        let db = self.connection();
         let ahora = Utc::now();
         let modulo = modulo::ActiveModel {
             id: Set(0), // Auto-increment field
@@ -77,7 +74,7 @@ impl ModuloService {
         &self,
         curso_id: i32,
     ) -> Result<Vec<ModuloModel>, DbErr> {
-        let db = self.connection().map_err(|e| DbErr::Custom(e.to_string()))?;
+        let db = self.connection();
         Modulo::find()
             .filter(modulo::Column::CursoId.eq(curso_id))
             .order_by(modulo::Column::Orden, Order::Asc)
@@ -89,7 +86,7 @@ impl ModuloService {
         &self,
         id: i32,
     ) -> Result<Option<ModuloModel>, DbErr> {
-        let db = self.connection().map_err(|e| DbErr::Custom(e.to_string()))?;
+        let db = self.connection();
         Modulo::find_by_id(id).one(&db).await
     }
 
@@ -98,7 +95,7 @@ impl ModuloService {
         id: i32,
         datos_actualizados: ActualizarModulo,
     ) -> Result<ModuloModel, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let modulo = Modulo::find_by_id(id)
             .one(&db)
             .await?
@@ -133,7 +130,7 @@ impl ModuloService {
     }
 
     pub async fn eliminar_modulo(&self, id: i32) -> Result<(), AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let modulo = Modulo::find_by_id(id)
             .one(&db)
             .await?
@@ -146,6 +143,7 @@ impl ModuloService {
 
 impl FromRef<AppState> for ModuloService {
     fn from_ref(state: &AppState) -> Self {
-        ModuloService::new(Arc::clone(&state.db))
+        let executor = state.db.clone().expect("Database connection is not available");
+        ModuloService::new(executor)
     }
 }

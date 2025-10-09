@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use crate::{
     models::AppState,
-    services::matricula_service::{MatriculaService, MatriculaServiceTrait},
+    services::matricula_service::MatriculaService,
     utils::errors::AppError,
 };
 

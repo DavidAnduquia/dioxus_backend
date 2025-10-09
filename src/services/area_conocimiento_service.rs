@@ -2,13 +2,12 @@ use axum::extract::FromRef;
 use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set,
-    SqlxPostgresConnector,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::sync::Arc;
 
 use crate::{
+    database::DbExecutor,
     models::{
         area_conocimiento::{self, Entity as AreaConocimiento, Model as AreaConocimientoModel},
         AppState,
@@ -18,7 +17,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct AreaConocimientoService {
-    pool: Arc<Option<PgPool>>,
+    db: DbExecutor,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,23 +35,20 @@ pub struct ActualizarArea {
 }
 
 impl AreaConocimientoService {
-    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
-        Self { pool }
+    pub fn new(db: DbExecutor) -> Self {
+        Self { db }
     }
 
-    fn pool(&self) -> Result<&PgPool, AppError> {
-        self.pool.as_ref().as_ref().ok_or_else(|| {
-            AppError::ServiceUnavailable("Database connection is not available".to_string())
-        })
+    fn pool(&self) -> &PgPool {
+        self.db.pool()
     }
 
-    fn connection(&self) -> Result<DatabaseConnection, AppError> {
-        let pool = self.pool()?;
-        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
+    fn connection(&self) -> DatabaseConnection {
+        self.db.connection()
     }
 
     pub async fn obtener_areas(&self) -> Result<Vec<AreaConocimientoModel>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let areas = AreaConocimiento::find()
             .order_by_desc(area_conocimiento::Column::CreatedAt)
             .all(&db)
@@ -64,13 +60,13 @@ impl AreaConocimientoService {
         &self,
         id: i32,
     ) -> Result<Option<AreaConocimientoModel>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let area = AreaConocimiento::find_by_id(id).one(&db).await?;
         Ok(area)
     }
 
     pub async fn obtener_areas_activas(&self) -> Result<Vec<AreaConocimientoModel>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let areas = AreaConocimiento::find()
             .filter(area_conocimiento::Column::Estado.eq(true))
             .order_by_asc(area_conocimiento::Column::Nombre)
@@ -87,7 +83,7 @@ impl AreaConocimientoService {
             return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
         }
 
-        let db = self.connection()?;
+        let db = self.connection();
         let ahora = Utc::now();
         let area = area_conocimiento::ActiveModel {
             id: Set(0), // Auto-increment field
@@ -107,7 +103,7 @@ impl AreaConocimientoService {
         id: i32,
         datos_actualizados: ActualizarArea,
     ) -> Result<AreaConocimientoModel, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let area = AreaConocimiento::find_by_id(id)
             .one(&db)
             .await?
@@ -134,7 +130,7 @@ impl AreaConocimientoService {
     }
 
     pub async fn cambiar_estado(&self, id: i32, estado: bool) -> Result<AreaConocimientoModel, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let area = AreaConocimiento::find_by_id(id)
             .one(&db)
             .await?
@@ -149,7 +145,7 @@ impl AreaConocimientoService {
     }
 
     pub async fn eliminar_area(&self, id: i32) -> Result<(), AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let area = AreaConocimiento::find_by_id(id)
             .one(&db)
             .await?
@@ -161,6 +157,7 @@ impl AreaConocimientoService {
 
 impl FromRef<AppState> for AreaConocimientoService {
     fn from_ref(state: &AppState) -> Self {
-        AreaConocimientoService::new(Arc::clone(&state.db))
+        let executor = state.db.clone().expect("Database connection is not available");
+        AreaConocimientoService::new(executor)
     }
 }

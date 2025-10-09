@@ -1,10 +1,10 @@
 use axum::extract::FromRef;
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set, SqlxPostgresConnector, Order};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set, Order};
 use sqlx::PgPool;
-use std::sync::Arc;
 
 use crate::{
+    database::DbExecutor,
     models::{
         curso::Entity as Curso,
         historial_curso_estudiante::{self, Entity as Historial, Model as HistorialModel},
@@ -14,59 +14,30 @@ use crate::{
     utils::errors::AppError,
 };
 
-pub trait MatriculaServiceTrait {
-    async fn matricular_estudiante(
-        &self,
-        estudiante_id: i64,
-        curso_id: i32,
-    ) -> Result<HistorialModel, AppError>;
-
-    async fn desmatricular_estudiante(
-        &self,
-        estudiante_id: i64,
-        curso_id: i32,
-    ) -> Result<HistorialModel, AppError>;
-
-    async fn obtener_matriculas_estudiante(
-        &self,
-        estudiante_id: i64,
-    ) -> Result<Vec<HistorialModel>, AppError>;
-
-    async fn obtener_matriculas_curso(
-        &self,
-        curso_id: i32,
-    ) -> Result<Vec<HistorialModel>, AppError>;
-}
-
 #[derive(Debug, Clone)]
 pub struct MatriculaService {
-    pool: Arc<Option<PgPool>>,
+    db: DbExecutor,
 }
 
 impl MatriculaService {
-    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
-        Self { pool }
+    pub fn new(db: DbExecutor) -> Self {
+        Self { db }
     }
 
-    fn pool(&self) -> Result<&PgPool, AppError> {
-        self.pool.as_ref().as_ref().ok_or_else(|| {
-            AppError::ServiceUnavailable("Database connection is not available".to_string())
-        })
+    fn pool(&self) -> &PgPool {
+        self.db.pool()
     }
 
-    fn connection(&self) -> Result<DatabaseConnection, AppError> {
-        let pool = self.pool()?;
-        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
+    fn connection(&self) -> DatabaseConnection {
+        self.db.connection()
     }
-}
 
-impl MatriculaServiceTrait for MatriculaService {
-    async fn matricular_estudiante(
+    pub async fn matricular_estudiante(
         &self,
         estudiante_id: i64,
         curso_id: i32,
     ) -> Result<HistorialModel, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
 
         Usuario::find_by_id(estudiante_id)
             .one(&db)
@@ -102,12 +73,12 @@ impl MatriculaServiceTrait for MatriculaService {
         Ok(matricula.insert(&db).await?)
     }
 
-    async fn desmatricular_estudiante(
+    pub async fn desmatricular_estudiante(
         &self,
         estudiante_id: i64,
         curso_id: i32,
     ) -> Result<HistorialModel, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
 
         Usuario::find_by_id(estudiante_id)
             .one(&db)
@@ -135,11 +106,11 @@ impl MatriculaServiceTrait for MatriculaService {
         Ok(matricula_actualizada)
     }
 
-    async fn obtener_matriculas_estudiante(
+    pub async fn obtener_matriculas_estudiante(
         &self,
         estudiante_id: i64,
     ) -> Result<Vec<HistorialModel>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let matriculas = Historial::find()
             .filter(historial_curso_estudiante::Column::EstudianteId.eq(estudiante_id))
             .order_by(historial_curso_estudiante::Column::FechaInscripcion, Order::Asc)
@@ -149,11 +120,11 @@ impl MatriculaServiceTrait for MatriculaService {
         Ok(matriculas)
     }
 
-    async fn obtener_matriculas_curso(
+    pub async fn obtener_matriculas_curso(
         &self,
         curso_id: i32,
     ) -> Result<Vec<HistorialModel>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let matriculas = Historial::find()
             .filter(historial_curso_estudiante::Column::CursoId.eq(curso_id))
             .order_by(historial_curso_estudiante::Column::FechaInscripcion, Order::Asc)
@@ -166,6 +137,7 @@ impl MatriculaServiceTrait for MatriculaService {
 
 impl FromRef<AppState> for MatriculaService {
     fn from_ref(state: &AppState) -> Self {
-        MatriculaService::new(Arc::clone(&state.db))
+        let executor = state.db.clone().expect("Database connection is not available");
+        MatriculaService::new(executor)
     }
 }

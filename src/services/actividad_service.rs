@@ -2,12 +2,12 @@ use axum::extract::FromRef;
 use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
-    QueryFilter, Set, SqlxPostgresConnector,
+    QueryFilter, Set,
 };
 use sqlx::PgPool;
-use std::sync::Arc;
 
 use crate::{
+    database::DbExecutor,
     models::{
         actividad::{self, Entity as Actividad, Model as ActividadModel, NewActividad, UpdateActividad},
         AppState,
@@ -17,29 +17,24 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct ActividadService {
-    pool: Arc<Option<PgPool>>,
+    db: DbExecutor,
 }
 
 impl ActividadService {
-    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
-        Self { pool }
+    pub fn new(db: DbExecutor) -> Self {
+        Self { db }
     }
 
-    fn pool(&self) -> Result<&PgPool, AppError> {
-        self.pool.as_ref().as_ref().ok_or_else(|| {
-            AppError::ServiceUnavailable("Database connection is not available".into())
-        })
+    fn pool(&self) -> &PgPool {
+        self.db.pool()
     }
 
-    fn connection(&self) -> Result<DatabaseConnection, AppError> {
-        let pool = self.pool()?;
-        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
+    fn connection(&self) -> DatabaseConnection {
+        self.db.connection()
     }
 
     pub async fn obtener_actividades(&self) -> Result<Vec<ActividadModel>, DbErr> {
-        let db = self
-            .connection()
-            .map_err(|err| DbErr::Custom(err.to_string()))?;
+        let db = self.connection();
         Actividad::find().all(&db).await
     }
 
@@ -47,9 +42,7 @@ impl ActividadService {
         &self,
         curso_id: i32,
     ) -> Result<Vec<ActividadModel>, DbErr> {
-        let db = self
-            .connection()
-            .map_err(|err| DbErr::Custom(err.to_string()))?;
+        let db = self.connection();
         Actividad::find()
             .filter(actividad::Column::CursoId.eq(curso_id))
             .all(&db)
@@ -57,9 +50,7 @@ impl ActividadService {
     }
 
     pub async fn obtener_actividad_por_id(&self, id: i32) -> Result<Option<ActividadModel>, DbErr> {
-        let db = self
-            .connection()
-            .map_err(|err| DbErr::Custom(err.to_string()))?;
+        let db = self.connection();
         Actividad::find_by_id(id).one(&db).await
     }
 
@@ -86,7 +77,7 @@ impl ActividadService {
             ..Default::default()
         };
 
-        let db = self.connection()?;
+        let db = self.connection();
         let actividad_creada = actividad.insert(&db).await?;
         Ok(actividad_creada)
     }
@@ -96,7 +87,7 @@ impl ActividadService {
         id: i32,
         datos_actualizados: UpdateActividad,
     ) -> Result<ActividadModel, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let actividad = Actividad::find_by_id(id)
             .one(&db)
             .await?
@@ -138,7 +129,7 @@ impl ActividadService {
     }
 
     pub async fn eliminar_actividad(&self, id: i32) -> Result<(), AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let actividad = Actividad::find_by_id(id)
             .one(&db)
             .await?
@@ -151,6 +142,7 @@ impl ActividadService {
 
 impl FromRef<AppState> for ActividadService {
     fn from_ref(state: &AppState) -> Self {
-        ActividadService::new(Arc::clone(&state.db))
+        let executor = state.db.clone().expect("Database connection is not available");
+        ActividadService::new(executor)
     }
 }

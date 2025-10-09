@@ -58,11 +58,11 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
 /// Intenta crear un pool de conexiones sin reintentos
 async fn try_create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
     PgPoolOptions::new()
-        .max_connections(5)  // Aumentado a 5 para mejor rendimiento
-        .min_connections(1)  // Mantener al menos 1 conexión activa
+        .max_connections(3)  // Reducido a 3 para optimizar memoria (dev/test)
+        .min_connections(1)  // Sin conexiones mínimas para máxima optimización en reposo
         .acquire_timeout(Duration::from_secs(5))  // Timeout de 5 segundos
-        .idle_timeout(Duration::from_secs(300))   // 5 minutos de idle
-        .max_lifetime(Duration::from_secs(1800))  // 30 minutos de vida máxima
+        .idle_timeout(Duration::from_secs(120))   // 2 minutos de idle (optimizado)
+        .max_lifetime(Duration::from_secs(600))   // 10 minutos de vida máxima (optimizado)
         .test_before_acquire(true)  // Verificar conexión antes de usar
         .connect(database_url)
         .await

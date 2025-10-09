@@ -2,12 +2,12 @@ use chrono::Utc;
 use axum::extract::FromRef;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
-    Set, SqlxPostgresConnector,
+    Set,
 };
 use sqlx::PgPool;
-use std::sync::Arc;
 
 use crate::{
+    database::DbExecutor,
     models::{
         rol,
         usuario::{self, Entity as Usuario, Model as UsuarioModel, NewUsuario, UpdateUsuario},
@@ -26,23 +26,20 @@ fn is_valid_email(email: &str) -> bool {
 
 #[derive(Debug, Clone)]
 pub struct UsuarioService {
-    pool: Arc<Option<PgPool>>,
+    db: DbExecutor,
 }
 
 impl UsuarioService {
-    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
-        Self { pool }
+    pub fn new(db: DbExecutor) -> Self {
+        Self { db }
     }
 
-    fn pool(&self) -> Result<&PgPool, AppError> {
-        self.pool.as_ref().as_ref().ok_or_else(|| {
-            AppError::ServiceUnavailable("Database connection is not available".to_string())
-        })
+    fn pool(&self) -> &PgPool {
+        self.db.pool()
     }
 
-    fn connection(&self) -> Result<DatabaseConnection, AppError> {
-        let pool = self.pool()?;
-        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
+    fn connection(&self) -> DatabaseConnection {
+        self.db.connection()
     }
 
     // Iniciar sesión
@@ -51,7 +48,7 @@ impl UsuarioService {
         identificador: &str,
         contrasena: &str,
     ) -> Result<UsuarioModel, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let usuario = Usuario::find()
             .filter(
                 usuario::Column::DocumentoNit
@@ -73,7 +70,7 @@ impl UsuarioService {
 
     // Cerrar sesión
     pub async fn logout_usuario(&self, id: i64) -> Result<UsuarioModel, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let usuario = Usuario::find_by_id(id)
             .one(&db)
             .await?
@@ -89,7 +86,7 @@ impl UsuarioService {
 
     // Obtener todos los usuarios con su rol
     pub async fn obtener_usuarios(&self) -> Result<Vec<usuario::UsuarioConRol>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let usuarios = Usuario::find()
             .find_also_related(rol::Entity)
             .all(&db)
@@ -110,7 +107,7 @@ impl UsuarioService {
         &self,
         nuevo_usuario: NewUsuario,
     ) -> Result<usuario::Model, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         // Validar campos obligatorios
         if nuevo_usuario.nombre.trim().is_empty() {
             return Err(AppError::BadRequest(
@@ -194,7 +191,7 @@ impl UsuarioService {
         id: i64,
         datos_actualizados: UpdateUsuario,
     ) -> Result<usuario::Model, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let usuario = Usuario::find_by_id(id)
             .one(&db)
             .await?
@@ -276,7 +273,7 @@ impl UsuarioService {
         &self,
         id: i64,
     ) -> Result<Option<usuario::Model>, AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let usuario = Usuario::find_by_id(id).one(&db).await?;
         Ok(usuario)
     }
@@ -284,6 +281,7 @@ impl UsuarioService {
 
 impl FromRef<AppState> for UsuarioService {
     fn from_ref(app_state: &AppState) -> Self {
-        UsuarioService::new(Arc::clone(&app_state.db))
+        let executor = app_state.db.clone().expect("Database connection is not available");
+        UsuarioService::new(executor)
     }
 }

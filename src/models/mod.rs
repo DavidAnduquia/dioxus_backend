@@ -1,14 +1,13 @@
 use chrono::{DateTime, Utc};
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
-use jsonwebtoken::{EncodingKey, DecodingKey};
- 
-use crate::config::Config;
 
+use crate::{config::Config, database::DbExecutor};
 pub mod rol;
 pub mod actividad;
 pub mod area_conocimiento;
@@ -37,7 +36,7 @@ pub mod usuario;
 // Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
-    pub db: Arc<Option<PgPool>>, 
+    pub db: Option<DbExecutor>,
     pub config: Arc<Config>,
     pub jwt_encoding_key: EncodingKey,
     pub jwt_decoding_key: DecodingKey,
@@ -48,17 +47,38 @@ impl AppState {
     pub fn is_db_available(&self) -> bool {
         self.db.is_some()
     }
-    
-    /// Obtiene el pool de base de datos o retorna un error
+
+    fn missing_db_error(&self) -> crate::utils::errors::AppError {
+        crate::utils::errors::AppError::ServiceUnavailable(
+            format!(
+                "Database connection is not available (environment: {:?})",
+                self.config.environment
+            ),
+        )
+    }
+
+    /// Obtiene una referencia al pool SQLx o retorna un error
+    pub fn pg_pool(&self) -> Result<Arc<PgPool>, crate::utils::errors::AppError> {
+        self.db
+            .as_ref()
+            .map(|executor| executor.pool_arc())
+            .ok_or_else(|| self.missing_db_error())
+    }
+
+    /// Compatibilidad temporal: retorna `&PgPool` para servicios SQLx existentes
     pub fn get_db(&self) -> Result<&PgPool, crate::utils::errors::AppError> {
-        self.db.as_ref().as_ref().ok_or_else(|| {
-            crate::utils::errors::AppError::ServiceUnavailable(
-                format!(
-                    "Database connection is not available (environment: {:?})",
-                    self.config.environment
-                )
-            )
-        })
+        self.db
+            .as_ref()
+            .map(|executor| executor.pool())
+            .ok_or_else(|| self.missing_db_error())
+    }
+
+    /// Obtiene una conexión de SeaORM clonada
+    pub fn connection(&self) -> Result<sea_orm::DatabaseConnection, crate::utils::errors::AppError> {
+        self.db
+            .as_ref()
+            .map(|executor| executor.connection())
+            .ok_or_else(|| self.missing_db_error())
     }
 }
 

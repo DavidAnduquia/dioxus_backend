@@ -1,15 +1,16 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use axum::extract::FromRef;
 use chrono::Utc;
 use once_cell::sync::Lazy;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, SqlxPostgresConnector};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use sqlx::PgPool;
 use tokio::task::JoinHandle;
 use tokio::time::{self, Duration};
 
 use crate::{
+    database::DbExecutor,
     models::{
         evento_programado::{self, Entity as EventoProgramado},
         AppState,
@@ -26,27 +27,24 @@ static JOBS: Lazy<Mutex<HashMap<i32, JoinHandle<()>>>> =
 
 #[derive(Clone)]
 pub struct CronService {
-    pool: Arc<Option<PgPool>>,
+    db: DbExecutor,
     interval_seconds: u64,
 }
 
 impl CronService {
-    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
+    pub fn new(db: DbExecutor) -> Self {
         Self {
-            pool,
+            db,
             interval_seconds: DEFAULT_INTERVAL_SECONDS,
         }
     }
 
-    fn pool(&self) -> Result<&PgPool, AppError> {
-        self.pool.as_ref().as_ref().ok_or_else(|| {
-            AppError::ServiceUnavailable("Database connection is not available".to_string())
-        })
+    fn pool(&self) -> &PgPool {
+        self.db.pool()
     }
 
-    fn connection(&self) -> Result<DatabaseConnection, AppError> {
-        let pool = self.pool()?;
-        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
+    fn connection(&self) -> DatabaseConnection {
+        self.db.connection()
     }
 
     /// Permite configurar cada cuánto se re-evaluarán los cron jobs.
@@ -115,28 +113,21 @@ impl CronService {
 
     /// Busca en la base de datos los eventos `pendiente` y programa su ejecución.
     pub async fn iniciar_jobs_desde_eventos(&self) -> Result<(), AppError> {
-        let db = self.connection()?;
+        let db = self.connection();
         let eventos = EventoProgramado::find()
             .filter(evento_programado::Column::Estado.eq("pendiente"))
             .all(&db)
             .await?;
 
         for evento in eventos {
-            let pool = Arc::clone(&self.pool);
+            let db_executor = self.db.clone();
             let evento_id = evento.id;
 
             self.iniciar_job(evento_id, move || {
-                let pool = Arc::clone(&pool);
+                let db_executor = db_executor.clone();
                 tokio::spawn(async move {
-                    match pool.as_ref() {
-                        Some(pg_pool) => {
-                            let connection = SqlxPostgresConnector::from_sqlx_postgres_pool(pg_pool.clone());
-                            manejar_evento(connection, evento_id).await;
-                        }
-                        None => {
-                            tracing::error!("Database pool unavailable for cron job {}", evento_id);
-                        }
-                    }
+                    let connection = db_executor.connection();
+                    manejar_evento(connection, evento_id).await;
                 });
             });
         }
@@ -147,7 +138,8 @@ impl CronService {
 
 impl FromRef<AppState> for CronService {
     fn from_ref(state: &AppState) -> Self {
-        CronService::new(Arc::clone(&state.db))
+        let executor = state.db.clone().expect("Database connection is not available");
+        CronService::new(executor)
     }
 }
 

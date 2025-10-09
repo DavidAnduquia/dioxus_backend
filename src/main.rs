@@ -1,10 +1,12 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
+
 use tower::ServiceBuilder;
 use tower_http::{
     cors::CorsLayer, 
     trace::TraceLayer,
     compression::CompressionLayer,
+    limit::RequestBodyLimitLayer,
 };
 mod config;
 mod database;
@@ -17,6 +19,7 @@ mod services;
 mod utils;
 
 use config::Config;
+use database::DbExecutor;
 use routes::create_app;
 
 #[tokio::main]
@@ -50,8 +53,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Run migrations
     //database::run_migrations(&db_pool).await?;
     // Create application state
+    let db_executor = db_pool.map(DbExecutor::from_pool);
+
     let app_state = models::AppState {
-        db: Arc::new(db_pool),
+        db: db_executor,
         config: Arc::clone(&config),
         jwt_encoding_key: jsonwebtoken::EncodingKey::from_secret(config.jwt_secret.as_ref()),
         jwt_decoding_key: jsonwebtoken::DecodingKey::from_secret(config.jwt_secret.as_ref()),
@@ -61,6 +66,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = create_app()
         .layer(
             ServiceBuilder::new()
+                // Límite de body para reducir buffers (2MB para uploads razonables)
+                .layer(RequestBodyLimitLayer::new(2 * 1024 * 1024))
                 // Compresión automática de respuestas (gzip)
                 // Reduce tamaño de respuestas JSON ~70-80%
                 .layer(CompressionLayer::new())
@@ -70,9 +77,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .layer(CorsLayer::permissive())
                 // Autenticación JWT
                 .layer(middleware::auth::auth_layer())
-                // Métricas de performance (solo requests lentos)
-                .layer(axum::middleware::from_fn(middleware::memory::performance_metrics)),
         )
+        // Métricas de performance (solo requests lentos) - fuera del ServiceBuilder
+        .layer(axum::middleware::from_fn(middleware::memory::performance_metrics))
         .with_state(app_state);
 
     // Run the server with graceful shutdown
