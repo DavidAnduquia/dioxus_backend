@@ -49,7 +49,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Run migrations
     //database::run_migrations(&db_pool).await?;
-
     // Create application state
     let app_state = models::AppState {
         db: Arc::new(db_pool),

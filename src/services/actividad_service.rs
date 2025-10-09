@@ -1,37 +1,66 @@
-use chrono::{Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, Set};
+use axum::extract::FromRef;
+use chrono::Utc;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
+    QueryFilter, Set, SqlxPostgresConnector,
+};
+use sqlx::PgPool;
+use std::sync::Arc;
 
 use crate::{
-    models::actividad::{self, Entity as Actividad, Model as ActividadModel, NewActividad, UpdateActividad},
+    models::{
+        actividad::{self, Entity as Actividad, Model as ActividadModel, NewActividad, UpdateActividad},
+        AppState,
+    },
     utils::errors::AppError,
 };
 
 #[derive(Debug, Clone)]
 pub struct ActividadService {
-    db: DatabaseConnection,
+    pool: Arc<Option<PgPool>>,
 }
 
 impl ActividadService {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new(pool: Arc<Option<PgPool>>) -> Self {
+        Self { pool }
+    }
+
+    fn pool(&self) -> Result<&PgPool, AppError> {
+        self.pool.as_ref().as_ref().ok_or_else(|| {
+            AppError::ServiceUnavailable("Database connection is not available".into())
+        })
+    }
+
+    fn connection(&self) -> Result<DatabaseConnection, AppError> {
+        let pool = self.pool()?;
+        Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone()))
     }
 
     pub async fn obtener_actividades(&self) -> Result<Vec<ActividadModel>, DbErr> {
-        Actividad::find().all(&self.db).await
+        let db = self
+            .connection()
+            .map_err(|err| DbErr::Custom(err.to_string()))?;
+        Actividad::find().all(&db).await
     }
 
     pub async fn obtener_actividades_por_curso(
         &self,
         curso_id: i32,
     ) -> Result<Vec<ActividadModel>, DbErr> {
+        let db = self
+            .connection()
+            .map_err(|err| DbErr::Custom(err.to_string()))?;
         Actividad::find()
             .filter(actividad::Column::CursoId.eq(curso_id))
-            .all(&self.db)
+            .all(&db)
             .await
     }
 
     pub async fn obtener_actividad_por_id(&self, id: i32) -> Result<Option<ActividadModel>, DbErr> {
-        Actividad::find_by_id(id).one(&self.db).await
+        let db = self
+            .connection()
+            .map_err(|err| DbErr::Custom(err.to_string()))?;
+        Actividad::find_by_id(id).one(&db).await
     }
 
     pub async fn crear_actividad(
@@ -39,7 +68,7 @@ impl ActividadService {
         nueva_actividad: NewActividad,
     ) -> Result<ActividadModel, AppError> {
         if nueva_actividad.nombre.trim().is_empty() {
-            return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El nombre es obligatorio".into()));
         }
 
         let ahora = Utc::now();
@@ -57,7 +86,8 @@ impl ActividadService {
             ..Default::default()
         };
 
-        let actividad_creada = actividad.insert(&self.db).await?;
+        let db = self.connection()?;
+        let actividad_creada = actividad.insert(&db).await?;
         Ok(actividad_creada)
     }
 
@@ -66,10 +96,11 @@ impl ActividadService {
         id: i32,
         datos_actualizados: UpdateActividad,
     ) -> Result<ActividadModel, AppError> {
+        let db = self.connection()?;
         let actividad = Actividad::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Actividad no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Actividad no encontrada".into()))?;
 
         let mut actividad: actividad::ActiveModel = actividad.into();
 
@@ -81,7 +112,7 @@ impl ActividadService {
         }
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".to_string()));
+                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
             }
             actividad.nombre = Set(nombre);
         }
@@ -102,17 +133,24 @@ impl ActividadService {
         }
 
         actividad.updated_at = Set(Some(Utc::now()));
-        let actividad_actualizada = actividad.update(&self.db).await?;
+        let actividad_actualizada = actividad.update(&db).await?;
         Ok(actividad_actualizada)
     }
 
     pub async fn eliminar_actividad(&self, id: i32) -> Result<(), AppError> {
+        let db = self.connection()?;
         let actividad = Actividad::find_by_id(id)
-            .one(&self.db)
+            .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Actividad no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Actividad no encontrada".into()))?;
 
-        actividad.delete(&self.db).await?;
+        actividad.delete(&db).await?;
         Ok(())
+    }
+}
+
+impl FromRef<AppState> for ActividadService {
+    fn from_ref(state: &AppState) -> Self {
+        ActividadService::new(Arc::clone(&state.db))
     }
 }
