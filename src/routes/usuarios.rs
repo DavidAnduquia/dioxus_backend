@@ -10,11 +10,11 @@ pub fn usuarios_routes() -> Router<AppState> {
             get(usuarios::obtener_usuario_por_id).put(usuarios::actualizar_usuario),
         )
         .route(
-            "/api/usuarios/logout/{id}",
+            "/api/usuario/logout/{id}",
             post(usuarios::logout_usuario),
         )
         .route(
-            "/api/usuarios/login",
+            "/api/usuario/login",
             post(usuarios::login_usuario),
         )
 }

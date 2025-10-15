@@ -2,9 +2,10 @@ use chrono::Utc;
 use axum::extract::FromRef;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
-    Set,
+    Set, IntoActiveModel,
 };
 use sqlx::PgPool;
+use tracing::instrument;
 
 use crate::{
     database::DbExecutor,
@@ -38,17 +39,23 @@ impl UsuarioService {
         self.db.pool()
     }
 
-    fn connection(&self) -> DatabaseConnection {
+    /// Obtiene una conexión del pool de manera eficiente
+    async fn get_connection(&self) -> DatabaseConnection {
         self.db.connection()
     }
+    
+    // No necesitamos el método begin_transaction separado ya que usamos begin() directamente
 
     // Iniciar sesión
+    #[instrument(skip(self))]
     pub async fn login_usuario(
         &self,
         identificador: &str,
         contrasena: &str,
     ) -> Result<UsuarioModel, AppError> {
-        let db = self.connection();
+        let db = self.get_connection().await;
+        
+        // Buscar usuario
         let usuario = Usuario::find()
             .filter(
                 usuario::Column::DocumentoNit
@@ -61,32 +68,40 @@ impl UsuarioService {
             .ok_or_else(|| AppError::NotFound("Credenciales inválidas".to_string()))?;
 
         // Actualizar última conexión
-        let mut usuario: usuario::ActiveModel = usuario.into();
-        usuario.updated_at = Set(Some(Utc::now()));
+        let now = Utc::now();
+        let mut usuario = usuario.into_active_model();
+        usuario.fecha_actualizacion = Set(Some(now));
+        usuario.fecha_ultima_conexion = Set(Some(now));
         let usuario = usuario.update(&db).await?;
 
         Ok(usuario)
     }
 
     // Cerrar sesión
-    pub async fn logout_usuario(&self, id: i64) -> Result<UsuarioModel, AppError> {
-        let db = self.connection();
+    #[instrument(skip(self))]
+    pub async fn logout_usuario(&self, id: i32) -> Result<UsuarioModel, AppError> {
+        let db = self.get_connection().await;
+        
         let usuario = Usuario::find_by_id(id)
             .one(&db)
             .await?
             .ok_or_else(|| AppError::NotFound("Usuario no encontrado".to_string()))?;
 
         // Actualizar última conexión
-        let mut usuario: usuario::ActiveModel = usuario.into();
-        usuario.updated_at = Set(Some(Utc::now()));
+        let now = Utc::now();
+        let mut usuario = usuario.into_active_model();
+        usuario.fecha_actualizacion = Set(Some(now));
+        usuario.fecha_ultima_conexion = Set(Some(now));
         let usuario = usuario.update(&db).await?;
 
         Ok(usuario)
     }
 
     // Obtener todos los usuarios con su rol
+    #[instrument(skip(self))]
     pub async fn obtener_usuarios(&self) -> Result<Vec<usuario::UsuarioConRol>, AppError> {
-        let db = self.connection();
+        let db = self.get_connection().await;
+        
         let usuarios = Usuario::find()
             .find_also_related(rol::Entity)
             .all(&db)
@@ -107,7 +122,7 @@ impl UsuarioService {
         &self,
         nuevo_usuario: NewUsuario,
     ) -> Result<usuario::Model, AppError> {
-        let db = self.connection();
+        let db = self.get_connection().await;
         // Validar campos obligatorios
         if nuevo_usuario.nombre.trim().is_empty() {
             return Err(AppError::BadRequest(
@@ -176,8 +191,8 @@ impl UsuarioService {
             contrasena: Set(nuevo_usuario.contrasena),
             rol_id: Set(nuevo_usuario.rol_id),
             estado: Set(Some(nuevo_usuario.estado.unwrap_or(true))),
-            created_at: Set(Some(Utc::now())),
-            updated_at: Set(Some(Utc::now())),
+            fecha_creacion: Set(Some(Utc::now())),
+            fecha_actualizacion: Set(Some(Utc::now())),
             ..Default::default()
         };
 
@@ -188,10 +203,10 @@ impl UsuarioService {
     // Editar usuario existente
     pub async fn editar_usuario(
         &self,
-        id: i64,
+        id: i32,
         datos_actualizados: UpdateUsuario,
     ) -> Result<usuario::Model, AppError> {
-        let db = self.connection();
+        let db = self.get_connection().await;
         let usuario = Usuario::find_by_id(id)
             .one(&db)
             .await?
@@ -262,7 +277,7 @@ impl UsuarioService {
             usuario.estado = Set(Some(estado));
         }
 
-        usuario.updated_at = Set(Some(Utc::now()));
+        usuario.fecha_actualizacion = Set(Some(Utc::now()));
         let usuario = usuario.update(&db).await?;
 
         Ok(usuario)
@@ -271,9 +286,9 @@ impl UsuarioService {
     // Obtener usuario por ID
     pub async fn obtener_usuario_por_id(
         &self,
-        id: i64,
+        id: i32,
     ) -> Result<Option<usuario::Model>, AppError> {
-        let db = self.connection();
+        let db = self.get_connection().await;
         let usuario = Usuario::find_by_id(id).one(&db).await?;
         Ok(usuario)
     }

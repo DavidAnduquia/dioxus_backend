@@ -261,28 +261,10 @@ CREATE INDEX idx_calificaciones_actividad ON calificaciones(actividad_id);
 CREATE INDEX idx_calificaciones_estudiante ON calificaciones(estudiante_id);
 
 -- Función para actualizar automáticamente los timestamps
-CREATE OR REPLACE FUNCTION update_modified_column() 
+CREATE OR REPLACE FUNCTION update_modified_column(target_column TEXT DEFAULT 'updated_at')
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW; 
-END;
-$$ LANGUAGE plpgsql;
-
--- Triggers para actualizar automáticamente las fechas de modificación
-CREATE TRIGGER update_usuarios_modtime
-BEFORE UPDATE ON usuarios
-FOR EACH ROW EXECUTE FUNCTION update_modified_column();
-
-CREATE TRIGGER update_areas_conocimiento_modtime
-BEFORE UPDATE ON areas_conocimiento
-FOR EACH ROW EXECUTE FUNCTION update_modified_column();
-
--- Insertar datos iniciales
-INSERT INTO roles (nombre) VALUES 
-    ('Coordinador'), 
-    ('Profesor'), 
-    ('Estudiante')
+    NEW := jsonb_populate_record(NEW, jsonb_build_object(target_column, NOW()));
 ON CONFLICT (nombre) DO NOTHING;
 
 -- Insertar áreas de conocimiento de ejemplo

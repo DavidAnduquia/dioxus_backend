@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 #[sea_orm(table_name = "usuarios")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
-    pub id: i64,
+    pub id: i32,
     pub nombre: String,
     pub documento_nit: Option<String>,
     #[sea_orm(unique)]
@@ -15,8 +15,12 @@ pub struct Model {
     pub contrasena: String,
     pub rol_id: i32,
     pub estado: Option<bool>,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
+    #[sea_orm(column_name = "fecha_creacion")]
+    pub fecha_creacion: Option<DateTime<Utc>>,
+    #[sea_orm(column_name = "fecha_actualizacion")]
+    pub fecha_actualizacion: Option<DateTime<Utc>>,
+    #[sea_orm(column_name = "fecha_ultima_conexion")]
+    pub fecha_ultima_conexion: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize)]

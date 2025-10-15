@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Deserialize)]
 pub struct MatriculaPayload {
-    pub estudiante_id: i64,
+    pub estudiante_id: i32,
     pub curso_id: i32,
 }
 
@@ -30,7 +30,7 @@ pub async fn matricular_estudiante(
 
 pub async fn desmatricular_estudiante(
     State(state): State<AppState>,
-    Path((estudiante_id, curso_id)): Path<(i64, i32)>,
+    Path((estudiante_id, curso_id)): Path<(i32, i32)>,
 ) -> Result<Json<crate::models::historial_curso_estudiante::Model>, AppError> {
     let service = MatriculaService::from_ref(&state);
     let matricula = service
@@ -41,7 +41,7 @@ pub async fn desmatricular_estudiante(
 
 pub async fn obtener_matriculas_estudiante(
     State(state): State<AppState>,
-    Path(estudiante_id): Path<i64>,
+    Path(estudiante_id): Path<i32>,
 ) -> Result<Json<Vec<crate::models::historial_curso_estudiante::Model>>, AppError> {
     let service = MatriculaService::from_ref(&state);
     let matriculas = service

@@ -49,7 +49,7 @@ pub struct NuevoCurso {
     pub fecha_inicio: DateTime<Utc>,
     pub fecha_fin: DateTime<Utc>,
     pub anio_pensum: Option<i32>,
-    pub coordinador_id: Option<i64>,
+    pub coordinador_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -67,7 +67,7 @@ pub struct ActualizarCurso {
     pub fecha_inicio: Option<DateTime<Utc>>,
     pub fecha_fin: Option<DateTime<Utc>>,
     pub anio_pensum: Option<i32>,
-    pub coordinador_id: Option<i64>,
+    pub coordinador_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

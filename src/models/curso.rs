@@ -19,7 +19,7 @@ pub struct Model {
     pub fecha_inicio: Option<DateTime<Utc>>,
     pub fecha_fin: Option<DateTime<Utc>>,
     pub anio_pensum: Option<i32>,
-    pub coordinador_id: Option<i64>,
+    pub coordinador_id: Option<i32>,
     pub plantilla_base_id: Option<i32>,
     pub prerequisito: Option<String>,
     pub created_at: Option<DateTime<Utc>>,

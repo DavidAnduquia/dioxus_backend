@@ -34,7 +34,7 @@ pub async fn login_usuario(
 // POST /api/usuarios/logout/:id
 pub async fn logout_usuario(
     State(state): State<AppState>,
-    Path(id): Path<i64>,
+    Path(id): Path<i32>,
 ) -> Result<Json<usuario_models::Model>, AppError> {
     let service = UsuarioService::from_ref(&state);
     let usuario = service.logout_usuario(id).await?;
@@ -63,7 +63,7 @@ pub async fn crear_usuario(
 // PUT /api/usuarios/:id
 pub async fn actualizar_usuario(
     State(state): State<AppState>,
-    Path(id): Path<i64>,
+    Path(id): Path<i32>,
     Json(payload): Json<usuario_models::UpdateUsuario>,
 ) -> Result<Json<usuario_models::Model>, AppError> {
     let service = UsuarioService::from_ref(&state);
@@ -74,7 +74,7 @@ pub async fn actualizar_usuario(
 // GET /api/usuarios/:id
 pub async fn obtener_usuario_por_id(
     State(state): State<AppState>,
-    Path(id): Path<i64>,
+    Path(id): Path<i32>,
 ) -> Result<Json<Option<usuario_models::Model>>, AppError> {
     let service = UsuarioService::from_ref(&state);
     let usuario = service.obtener_usuario_por_id(id).await?;

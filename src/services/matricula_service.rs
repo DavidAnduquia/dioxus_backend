@@ -34,7 +34,7 @@ impl MatriculaService {
 
     pub async fn matricular_estudiante(
         &self,
-        estudiante_id: i64,
+        estudiante_id: i32,
         curso_id: i32,
     ) -> Result<HistorialModel, AppError> {
         let db = self.connection();
@@ -75,7 +75,7 @@ impl MatriculaService {
 
     pub async fn desmatricular_estudiante(
         &self,
-        estudiante_id: i64,
+        estudiante_id: i32,
         curso_id: i32,
     ) -> Result<HistorialModel, AppError> {
         let db = self.connection();
@@ -108,7 +108,7 @@ impl MatriculaService {
 
     pub async fn obtener_matriculas_estudiante(
         &self,
-        estudiante_id: i64,
+        estudiante_id: i32,
     ) -> Result<Vec<HistorialModel>, AppError> {
         let db = self.connection();
         let matriculas = Historial::find()
