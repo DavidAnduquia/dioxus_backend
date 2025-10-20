@@ -52,6 +52,46 @@ pub enum AppError {
     SeaOrm(#[from] sea_orm::DbErr),
 }
 
+// Implementaciones From<&str> para evitar .to_string() en cada uso
+#[allow(dead_code)]
+impl AppError {
+    pub fn bad_request(msg: impl Into<String>) -> Self {
+        Self::BadRequest(msg.into())
+    }
+
+    pub fn unauthorized(msg: impl Into<String>) -> Self {
+        Self::Unauthorized(msg.into())
+    }
+
+    pub fn forbidden(msg: impl Into<String>) -> Self {
+        Self::Forbidden(msg.into())
+    }
+
+    pub fn not_found(msg: impl Into<String>) -> Self {
+        Self::NotFound(msg.into())
+    }
+
+    pub fn conflict(msg: impl Into<String>) -> Self {
+        Self::Conflict(msg.into())
+    }
+
+    pub fn internal_server_error(msg: impl Into<String>) -> Self {
+        Self::InternalServerError(msg.into())
+    }
+
+    pub fn database_timeout(msg: impl Into<String>) -> Self {
+        Self::DatabaseTimeout(msg.into())
+    }
+
+    pub fn database_connection_failed(msg: impl Into<String>) -> Self {
+        Self::DatabaseConnectionFailed(msg.into())
+    }
+
+    pub fn service_unavailable(msg: impl Into<String>) -> Self {
+        Self::ServiceUnavailable(msg.into())
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message) = match self {

@@ -20,25 +20,27 @@ impl Config {
     pub fn from_env() -> Result<Self, Box<dyn std::error::Error>> {
         dotenvy::dotenv().ok();
 
+        // Usar valores por defecto sin allocations innecesarias
         let database_url = env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgresql://localhost/rust_api_db".to_string());
+            .unwrap_or_else(|_| "postgresql://localhost/rust_api_db".into());
 
         let port = env::var("PORT")
-            .unwrap_or_else(|_| "3000".to_string())
-            .parse::<u16>()?;
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(3000);
 
         let jwt_secret = env::var("JWT_SECRET")
-            .unwrap_or_else(|_| "your-secret-key-change-in-production".to_string());
+            .unwrap_or_else(|_| "your-secret-key-change-in-production".into());
 
-        let environment = match env::var("ENVIRONMENT")
-            .unwrap_or_else(|_| "development".to_string())
-            .to_lowercase()
-            .as_str()
-        {
-            "production" => Environment::Production,
-            "testing" => Environment::Testing,
-            _ => Environment::Development,
-        };
+        let environment = env::var("ENVIRONMENT")
+            .ok()
+            .and_then(|e| match e.to_lowercase().as_str() {
+                "production" => Some(Environment::Production),
+                "testing" => Some(Environment::Testing),
+                "development" => Some(Environment::Development),
+                _ => None,
+            })
+            .unwrap_or(Environment::Development);
 
         Ok(Config {
             database_url,

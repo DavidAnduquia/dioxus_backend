@@ -7,6 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use utoipa::OpenApi;
+use std::sync::OnceLock;
 
 use crate::{handlers, models::AppState};
 
@@ -227,15 +228,16 @@ async fn oauth2_token_endpoint(
     }))
 }
 
-async fn serve_openapi_spec() -> String {
+// Cache global para OpenAPI spec (se genera una sola vez)
+static OPENAPI_SPEC: OnceLock<String> = OnceLock::new();
+
+fn generate_openapi_spec() -> String {
     use utoipa::openapi::security::{SecurityScheme, OAuth2, Flow, Password, Scopes};
 
     let mut openapi = ApiDoc::openapi();
-
-    // Agregar esquemas de seguridad de manera más eficiente
     let components = openapi.components.get_or_insert_with(Default::default);
 
-    // Bearer Token para uso manual
+    // Bearer Token
     components.add_security_scheme(
         "bearer_auth",
         SecurityScheme::Http(
@@ -243,22 +245,17 @@ async fn serve_openapi_spec() -> String {
         ),
     );
 
-    // OAuth2 Password Flow para login automático
+    // OAuth2 Password Flow
     let password_flow = Password::new("/auth/token", Scopes::new());
     let oauth2 = OAuth2::new([Flow::Password(password_flow)]);
+    components.add_security_scheme("oauth2_password", SecurityScheme::OAuth2(oauth2));
 
-    components.add_security_scheme(
-        "oauth2_password",
-        SecurityScheme::OAuth2(oauth2)
-    );
-
-    // Agregar seguridad global
+    // Seguridad global
     let security = vec![
         utoipa::openapi::security::SecurityRequirement::new("bearer_auth", Vec::<String>::new()),
         utoipa::openapi::security::SecurityRequirement::new("oauth2_password", Vec::<String>::new())
     ];
 
-    // Crear la estructura OpenAPI modificada de manera más eficiente
     openapi.components = Some(components.clone());
     openapi.security = Some(security);
 
@@ -266,6 +263,10 @@ async fn serve_openapi_spec() -> String {
         tracing::error!("Failed to serialize OpenAPI spec: {}", e);
         "{}".to_string()
     })
+}
+
+async fn serve_openapi_spec() -> String {
+    OPENAPI_SPEC.get_or_init(generate_openapi_spec).clone()
 }
 
 async fn serve_swagger_ui() -> Html<&'static str> {

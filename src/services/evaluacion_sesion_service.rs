@@ -47,7 +47,7 @@ impl EvaluacionSesionService {
         nueva_evaluacion: NuevaEvaluacion,
     ) -> Result<EvaluacionSesionModel, AppError> {
         if nueva_evaluacion.nombre.trim().is_empty() {
-            return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
+            return Err(AppError::bad_request("El nombre es obligatorio"));
         }
 
         let ahora = Utc::now();
@@ -76,7 +76,7 @@ impl EvaluacionSesionService {
         let evaluacion = EvaluacionSesion::find_by_id(id)
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Evaluación no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::not_found("Evaluación no encontrada"))?
 
         let mut evaluacion: evaluacion_sesion::ActiveModel = evaluacion.into();
 
@@ -108,7 +108,7 @@ impl EvaluacionSesionService {
         let evaluacion = EvaluacionSesion::find_by_id(id)
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Evaluación no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::not_found("Evaluación no encontrada"))?;
 
         evaluacion.delete(&self.db).await?;
         Ok(())

@@ -16,7 +16,7 @@ pub struct SocketService {
 impl SocketService {
     pub fn new() -> Self {
         Self {
-            connections: Arc::new(RwLock::new(HashMap::new())),
+            connections: Arc::new(RwLock::new(HashMap::with_capacity(0))),
         }
     }
 

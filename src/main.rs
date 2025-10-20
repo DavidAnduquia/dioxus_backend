@@ -5,7 +5,6 @@ use tower::ServiceBuilder;
 use tower_http::{
     cors::CorsLayer, 
     trace::TraceLayer,
-    compression::CompressionLayer,
     limit::RequestBodyLimitLayer,
 };
 mod config;
@@ -22,15 +21,11 @@ use config::Config;
 use database::DbExecutor;
 use routes::create_app;
 
-#[tokio::main]
+#[tokio::main(worker_threads = 2)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Inicializar logger con archivo en `logs/`
+    // Inicializar logger con persistencia en archivos (zona horaria Bogotá UTC-5)
+    // Para máxima optimización sin archivos, usar: utils::logger::init_logger_console_only()?;
     utils::logger::init_logger("logs", "rust-api-backend")?;
-
-    // Limpiar logs antiguos (más de 30 días)
-    if let Err(e) = utils::logger::cleanup_old_logs("logs", 30) {
-        tracing::warn!("⚠️  No se pudieron limpiar los logs antiguos: {}", e);
-    }
 
     // Load configuration
     let config = Arc::new(Config::from_env()?);
@@ -68,11 +63,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = create_app()
         .layer(
             ServiceBuilder::new()
-                // Límite de body para reducir buffers (2MB para uploads razonables)
-                .layer(RequestBodyLimitLayer::new(2 * 1024 * 1024))
-                // Compresión automática de respuestas (gzip)
-                // Reduce tamaño de respuestas JSON ~70-80%
-                .layer(CompressionLayer::new())
+                // Límite de body reducido a 512KB (optimización memoria)
+                .layer(RequestBodyLimitLayer::new(512 * 1024))
                 // Logging de requests HTTP
                 .layer(TraceLayer::new_for_http())
                 // CORS permisivo (ajustar en producción)
@@ -80,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Autenticación JWT
                 .layer(middleware::auth::auth_layer())
         )
-        // Métricas de performance (solo requests lentos) - fuera del ServiceBuilder
+        // Métricas de performance (solo requests lentos)
         .layer(axum::middleware::from_fn(middleware::memory::performance_metrics))
         .with_state(app_state);
 
@@ -156,6 +148,11 @@ async fn perform_graceful_cleanup() {
     let jobs_cleaned = services::cron_service::cleanup_all_jobs();
     if jobs_cleaned > 0 {
         tracing::info!("🛑 {} cron jobs limpiados durante shutdown", jobs_cleaned);
+    }
+    
+    // Flush final de logs antes de cerrar
+    if let Err(e) = utils::logger::flush_logs() {
+        eprintln!("⚠️  Error al hacer flush de logs: {}", e);
     }
     
     tracing::info!("✅ Limpieza ordenada completada");
