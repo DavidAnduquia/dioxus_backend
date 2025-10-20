@@ -120,7 +120,7 @@ fn get_or_init_log_file() -> Arc<Mutex<File>> {
 ///     tracing::info!("🚀 Iniciando aplicación");
 /// }
 /// ```
-pub fn init_logger(log_dir: &'static str, app_name: &'static str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn init_logger(log_dir: &'static str, _app_name: &'static str) -> Result<(), Box<dyn std::error::Error>> {
     // Solo configuramos el logger una vez
     static INIT: OnceLock<()> = OnceLock::new();
     

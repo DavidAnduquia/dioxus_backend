@@ -27,9 +27,6 @@ impl DbExecutor {
     }
 
     /// Devuelve un `Arc` clonado del pool para quienes necesiten ownership.
-    pub fn pool_arc(&self) -> Arc<PgPool> {
-        Arc::clone(&self.pool)
-    }
 
     /// Crea una conexión de SeaORM bajo demanda. Cada llamada clona el pool
     /// internamente, pero evita mantener la conexión pre-construida en memoria.

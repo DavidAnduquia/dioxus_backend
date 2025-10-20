@@ -51,7 +51,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Run migrations
-    //database::run_migrations(&db_pool).await?;
+    // if let Some(ref pool) = db_pool {
+    //     database::seeder::run_migrations(pool).await?;
+    // }
     // Create application state
     let db_executor = db_pool.map(DbExecutor::from_pool);
 
@@ -122,9 +124,39 @@ async fn shutdown_signal() {
     tokio::select! {
         _ = ctrl_c => {
             tracing::info!("🛑 Received Ctrl+C signal, shutting down gracefully...");
+            perform_graceful_cleanup().await;
         },
         _ = terminate => {
             tracing::info!("🛑 Received SIGTERM signal, shutting down gracefully...");
+            perform_graceful_cleanup().await;
         },
     }
+}
+
+/// /* Cambio nuevo */ Realiza limpieza ordenada de todos los recursos
+async fn perform_graceful_cleanup() {
+    tracing::info!("🧹 Iniciando limpieza ordenada de recursos...");
+    
+    // Optimizar memoria de SocketService antes del cierre
+    let socket_service = services::socket_service::get_socket_service();
+    let optimized = socket_service.optimize_memory().await;
+    if optimized > 0 {
+        tracing::info!("🔧 Optimizados {} usuarios en SocketService durante shutdown", optimized);
+    }
+    
+    // Mostrar métricas finales
+    let socket_metrics = socket_service.get_memory_metrics().await;
+    tracing::info!("📊 Métricas finales SocketService: {} usuarios, {} conexiones, {} overhead", 
+        socket_metrics.total_users, 
+        socket_metrics.total_connections,
+        socket_metrics.memory_overhead
+    );
+    
+    // /* Cambio nuevo */ Limpiar cron jobs activos
+    let jobs_cleaned = services::cron_service::cleanup_all_jobs();
+    if jobs_cleaned > 0 {
+        tracing::info!("🛑 {} cron jobs limpiados durante shutdown", jobs_cleaned);
+    }
+    
+    tracing::info!("✅ Limpieza ordenada completada");
 }

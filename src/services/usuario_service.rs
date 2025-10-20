@@ -4,7 +4,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
     Set, IntoActiveModel,
 };
-use sqlx::PgPool;
 use tracing::instrument;
 
 use crate::{
@@ -35,9 +34,6 @@ impl UsuarioService {
         Self { db }
     }
 
-    fn pool(&self) -> &PgPool {
-        self.db.pool()
-    }
 
     /// Obtiene una conexión del pool de manera eficiente
     async fn get_connection(&self) -> DatabaseConnection {

@@ -5,7 +5,6 @@ use sea_orm::{
     QueryFilter, QueryOrder, Set, TransactionTrait, Order
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 
 use crate::{
     database::DbExecutor,
@@ -89,9 +88,6 @@ impl CursoService {
         Self { db }
     }
 
-    fn pool(&self) -> &PgPool {
-        self.db.pool()
-    }
 
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()

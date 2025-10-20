@@ -4,7 +4,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
     QueryFilter, Set,
 };
-use sqlx::PgPool;
 
 use crate::{
     database::DbExecutor,
@@ -25,9 +24,6 @@ impl ActividadService {
         Self { db }
     }
 
-    fn pool(&self) -> &PgPool {
-        self.db.pool()
-    }
 
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()

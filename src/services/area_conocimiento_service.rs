@@ -4,7 +4,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 
 use crate::{
     database::DbExecutor,
@@ -39,9 +38,6 @@ impl AreaConocimientoService {
         Self { db }
     }
 
-    fn pool(&self) -> &PgPool {
-        self.db.pool()
-    }
 
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()

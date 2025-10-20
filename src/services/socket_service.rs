@@ -117,6 +117,45 @@ impl SocketService {
         let connections = self.connections.read().await;
         connections.values().map(|v| v.len()).sum()
     }
+
+    /// /* Cambio nuevo */ Obtiene métricas detalladas para monitoreo de memoria
+    pub async fn get_memory_metrics(&self) -> SocketMemoryMetrics {
+        let connections = self.connections.read().await;
+        let total_users = connections.len();
+        let total_connections = connections.values().map(|v| v.len()).sum();
+        let total_capacity: usize = connections.values().map(|v| v.capacity()).sum();
+        let memory_overhead = total_capacity.saturating_sub(total_connections);
+        
+        SocketMemoryMetrics {
+            total_users,
+            total_connections,
+            total_capacity,
+            memory_overhead,
+            largest_user_connections: connections.values().map(|v| v.len()).max().unwrap_or(0),
+        }
+    }
+
+    /// /* Cambio nuevo */ Optimiza memoria aplicando shrink_to_fit cuando hay overhead significativo
+    pub async fn optimize_memory(&self) -> usize {
+        let mut connections = self.connections.write().await;
+        let mut optimized_count = 0;
+        
+        for (user_id, sockets) in connections.iter_mut() {
+            let overhead = sockets.capacity().saturating_sub(sockets.len());
+            // Solo optimizar si hay más del 50% de capacidad no utilizada y al menos 10 slots vacíos
+            if overhead > sockets.len() && overhead >= 10 {
+                sockets.shrink_to_fit();
+                optimized_count += 1;
+                tracing::debug!("🔧 Optimizada memoria para usuario {}: {} slots liberados", user_id, overhead);
+            }
+        }
+        
+        if optimized_count > 0 {
+            tracing::info!("🔧 Optimización de memoria completada: {} usuarios optimizados", optimized_count);
+        }
+        
+        optimized_count
+    }
 }
 
 impl Default for SocketService {
@@ -130,6 +169,16 @@ impl Default for SocketService {
 pub struct ConnectionInfo {
     pub connected_users: usize,
     pub rooms: Vec<String>,
+}
+
+/// /* Cambio nuevo */ Métricas detalladas de memoria para SocketService
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SocketMemoryMetrics {
+    pub total_users: usize,
+    pub total_connections: usize,
+    pub total_capacity: usize,
+    pub memory_overhead: usize,
+    pub largest_user_connections: usize,
 }
 
 /// Instancia singleton global del SocketService

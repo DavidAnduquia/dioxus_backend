@@ -54,6 +54,9 @@ pub fn create_routes() -> Router<AppState> {
         .route("/auth/token", post(oauth2_token_endpoint))  // Endpoint OAuth2
         .route("/users/me", get(handlers::users::get_current_user))
         .route("/ws", get(handlers::socket_manager::websocket_handler))  // WebSocket endpoint
+        // /* Cambio nuevo */ Endpoints para métricas de memoria
+        .route("/metrics/memory", get(handlers::metrics::get_memory_metrics))
+        .route("/metrics/optimize", post(handlers::metrics::optimize_memory))
         // .route("/posts", get(handlers::posts::get_posts))
         // .route("/posts", post(handlers::posts::create_post))
         // .route("/posts/:id", get(handlers::posts::get_post))

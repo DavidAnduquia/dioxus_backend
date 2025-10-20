@@ -10,3 +10,4 @@ pub mod examen;
 pub mod matricula;
 pub mod modulo;
 pub mod actividad;
+pub mod metrics; //* Cambio nuevo */ Handler para métricas de memoria

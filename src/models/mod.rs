@@ -57,13 +57,6 @@ impl AppState {
         )
     }
 
-    /// Obtiene una referencia al pool SQLx o retorna un error
-    pub fn pg_pool(&self) -> Result<Arc<PgPool>, crate::utils::errors::AppError> {
-        self.db
-            .as_ref()
-            .map(|executor| executor.pool_arc())
-            .ok_or_else(|| self.missing_db_error())
-    }
 
     /// Compatibilidad temporal: retorna `&PgPool` para servicios SQLx existentes
     pub fn get_db(&self) -> Result<&PgPool, crate::utils::errors::AppError> {
@@ -73,13 +66,6 @@ impl AppState {
             .ok_or_else(|| self.missing_db_error())
     }
 
-    /// Obtiene una conexión de SeaORM clonada
-    pub fn connection(&self) -> Result<sea_orm::DatabaseConnection, crate::utils::errors::AppError> {
-        self.db
-            .as_ref()
-            .map(|executor| executor.connection())
-            .ok_or_else(|| self.missing_db_error())
-    }
 }
 
 // User models

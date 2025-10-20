@@ -1,7 +1,6 @@
 use axum::extract::FromRef;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set, Order};
-use sqlx::PgPool;
 
 use crate::{
     database::DbExecutor,
@@ -24,9 +23,6 @@ impl MatriculaService {
         Self { db }
     }
 
-    fn pool(&self) -> &PgPool {
-        self.db.pool()
-    }
 
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()

@@ -4,7 +4,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, Set,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 
 use crate::database::DbExecutor;
 use crate::models::{AppState, examen::{self, Entity as Examen, Model as ExamenModel}};
@@ -45,9 +44,6 @@ impl ExamenService {
         Self { db }
     }
 
-    fn pool(&self) -> &PgPool {
-        self.db.pool()
-    }
 
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()

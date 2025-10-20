@@ -8,7 +8,6 @@ use crate::{
     utils::errors::AppError,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 
 #[derive(Debug, Clone)]
 pub struct ModuloService {
@@ -37,9 +36,6 @@ impl ModuloService {
         Self { db }
     }
 
-    fn pool(&self) -> &PgPool {
-        self.db.pool()
-    }
 
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()

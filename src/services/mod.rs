@@ -1,5 +1,6 @@
 pub mod rol_service;
 pub mod socket_service;
+pub mod cron_service; // /* Cambio nuevo */ Agregar cron_service al módulo
 pub mod usuario_service;
 pub mod area_conocimiento_service;
 pub mod curso_service;
