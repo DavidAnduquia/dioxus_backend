@@ -202,7 +202,7 @@ async fn oauth2_token_endpoint(
     let token = encode(
         &Header::default(),
         &claims,
-        &state.jwt_encoding_key,
+        state.jwt_encoding_key.as_ref(),
     )
     .map_err(|e| {
         tracing::error!("Token generation error: {:?}", e);

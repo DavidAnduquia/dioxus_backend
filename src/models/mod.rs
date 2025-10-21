@@ -31,15 +31,14 @@ pub mod pregunta_examen;
 pub mod profesor_curso;
 pub mod usuario;
 
-// Re-export models for easier access
-
 // Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
     pub db: Option<DbExecutor>,
     pub config: Arc<Config>,
-    pub jwt_encoding_key: EncodingKey,
-    pub jwt_decoding_key: DecodingKey,
+    pub jwt_secret: Arc<[u8]>,
+    pub jwt_encoding_key: Arc<EncodingKey>,
+    pub jwt_decoding_key: Arc<DecodingKey>,
 }
 
 impl AppState {
@@ -56,7 +55,6 @@ impl AppState {
             ),
         )
     }
-
 
     /// Compatibilidad temporal: retorna `&PgPool` para servicios SQLx existentes
     pub fn get_db(&self) -> Result<&PgPool, crate::utils::errors::AppError> {

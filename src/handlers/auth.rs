@@ -62,7 +62,7 @@ pub async fn register(
     .await?;
 
     // Generate JWT token
-    let token = generate_token(&user, &state.jwt_encoding_key)?;
+    let token = generate_token(&user, state.jwt_encoding_key.as_ref())?;
 
     let response = AuthResponse {
         token,
@@ -108,7 +108,7 @@ pub async fn login(
     }
 
     // Generate JWT token
-    let token = generate_token(&user, &state.jwt_encoding_key)?;
+    let token = generate_token(&user, state.jwt_encoding_key.as_ref())?;
 
     let response = AuthResponse {
         token,

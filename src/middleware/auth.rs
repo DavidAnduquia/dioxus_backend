@@ -35,7 +35,7 @@ impl FromRequestParts<AppState> for AuthUser {
 
         let claims = decode::<Claims>(
             token,
-            &state.jwt_decoding_key,
+            state.jwt_decoding_key.as_ref(),
             &Validation::default(),
         )
         .map_err(|_| AppError::Unauthorized("Invalid token".to_string()))?
