@@ -15,8 +15,10 @@ pub struct SocketService {
 #[allow(dead_code)]
 impl SocketService {
     pub fn new() -> Self {
+        // Capacidad inicial mínima (crece dinámicamente según necesidad)
+        // Para aula virtual pequeña (<20 usuarios), esto es más eficiente
         Self {
-            connections: Arc::new(RwLock::new(HashMap::with_capacity(0))),
+            connections: Arc::new(RwLock::new(HashMap::with_capacity(1000))),
         }
     }
 

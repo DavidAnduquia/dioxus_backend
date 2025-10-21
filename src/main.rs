@@ -22,6 +22,7 @@ use database::DbExecutor;
 use routes::create_app;
 
 #[tokio::main(worker_threads = 2)]
+//#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Inicializar logger con persistencia en archivos (zona horaria Bogotá UTC-5)
     // Para máxima optimización sin archivos, usar: utils::logger::init_logger_console_only()?;

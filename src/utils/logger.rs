@@ -2,7 +2,7 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::sync::{Mutex, OnceLock};
 use std::collections::VecDeque;
-use chrono::{Local, FixedOffset, TimeZone, Utc};
+use chrono::{FixedOffset, TimeZone, Utc};
 use tracing_subscriber::{fmt::writer::MakeWriter, layer::SubscriberExt, EnvFilter, fmt, util::SubscriberInitExt};
 
 // Zona horaria de Bogotá (UTC-5)
@@ -16,9 +16,9 @@ impl tracing_subscriber::fmt::time::FormatTime for BogotaTime {
     }
 }
 
-// Buffer circular con límite de 20KB para optimizar memoria
-const MAX_BUFFER_SIZE: usize = 20 * 1024; // 20KB
-const FLUSH_THRESHOLD: usize = 4 * 1024;  // Flush cada 4KB
+// Sin buffer: escritura directa al archivo (mínimo consumo de memoria)
+const MAX_BUFFER_SIZE: usize = 1024; // 1KB mínimo
+const FLUSH_THRESHOLD: usize = 256;  // Flush cada 256 bytes (inmediato)
 
 struct CircularLogBuffer {
     buffer: VecDeque<u8>,
@@ -148,6 +148,7 @@ impl<'a> MakeWriter<'a> for BufferedMakeWriter {
 /// 
 /// # Uso
 /// Ideal para desarrollo donde no necesitas persistencia de logs
+#[allow(dead_code)]
 pub fn init_logger_console_only() -> Result<(), Box<dyn std::error::Error>> {
     static INIT: OnceLock<()> = OnceLock::new();
     
