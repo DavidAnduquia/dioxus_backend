@@ -9,9 +9,10 @@ pub struct Model {
     pub id: i32,
     pub nombre: String,
     pub descripcion: Option<String>,
+    pub color_etiqueta: String,
     pub estado: bool,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
+    pub fecha_creacion: Option<DateTime<Utc>>,
+    pub fecha_modificacion: Option<DateTime<Utc>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

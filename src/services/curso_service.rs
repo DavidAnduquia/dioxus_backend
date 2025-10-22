@@ -1,5 +1,5 @@
 use axum::extract::FromRef;
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{NaiveDate, Utc};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
     QueryFilter, QueryOrder, Set, TransactionTrait, Order
@@ -14,7 +14,6 @@ use crate::{
         contenido_transversal::{self, Entity as ContenidoTransversal, Model as ContenidoTransversalModel},
         curso::{self, Entity as Curso, Model as CursoModel},
         evaluacion_sesion::{self, Entity as EvaluacionSesion, Model as EvaluacionSesionModel},
-        plantilla_curso::{self, Entity as PlantillaCurso},
         usuario::Entity as Usuario,
         AppState,
     },
@@ -36,37 +35,31 @@ impl FromRef<AppState> for CursoService {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NuevoCurso {
     pub nombre: String,
-    pub codigo: String,
-    pub descripcion: Option<String>,
-    pub creditos: i32,
-    pub horas_teoricas: i32,
-    pub horas_practicas: i32,
-    pub area_conocimiento_id: i32,
-    pub estado: bool,
+    pub descripcion: String,
+    pub fecha_inicio: NaiveDate,
+    pub fecha_fin: NaiveDate,
     pub prerequisito: Option<String>,
-    pub periodo: Option<String>,
-    pub fecha_inicio: DateTime<Utc>,
-    pub fecha_fin: DateTime<Utc>,
-    pub anio_pensum: Option<i32>,
-    pub coordinador_id: Option<i32>,
+    pub coordinador_id: i32,
+    pub semestre: Option<i32>,
+    pub periodo: String,
+    pub anio_pensum: i32,
+    pub area_conocimiento_id: i32,
+    pub plantilla_base_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ActualizarCurso {
     pub nombre: Option<String>,
-    pub codigo: Option<String>,
     pub descripcion: Option<String>,
-    pub creditos: Option<i32>,
-    pub horas_teoricas: Option<i32>,
-    pub horas_practicas: Option<i32>,
-    pub area_conocimiento_id: Option<i32>,
-    pub estado: Option<bool>,
+    pub fecha_inicio: Option<NaiveDate>,
+    pub fecha_fin: Option<NaiveDate>,
     pub prerequisito: Option<String>,
-    pub periodo: Option<String>,
-    pub fecha_inicio: Option<DateTime<Utc>>,
-    pub fecha_fin: Option<DateTime<Utc>>,
-    pub anio_pensum: Option<i32>,
     pub coordinador_id: Option<i32>,
+    pub semestre: Option<i32>,
+    pub periodo: Option<String>,
+    pub anio_pensum: Option<i32>,
+    pub area_conocimiento_id: Option<i32>,
+    pub plantilla_base_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,7 +89,7 @@ impl CursoService {
     pub async fn obtener_cursos(&self) -> Result<Vec<CursoDetallado>, AppError> {
         let db = self.connection();
         let cursos = Curso::find()
-            .order_by_desc(curso::Column::CreatedAt)
+            .order_by_desc(curso::Column::CreadoEn)
             .find_also_related(AreaConocimientoEntity)
             .all(&db)
             .await
@@ -130,7 +123,7 @@ impl CursoService {
         if datos.nombre.trim().is_empty() {
             return Err(AppError::BadRequest("El nombre del curso es obligatorio".to_string()));
         }
-        if datos.descripcion.as_ref().map_or(true, |d| d.trim().is_empty()) {
+        if datos.descripcion.trim().is_empty() {
             return Err(AppError::BadRequest("La descripción del curso es obligatoria".to_string()));
         }
         if datos.fecha_fin <= datos.fecha_inicio {
@@ -152,21 +145,15 @@ impl CursoService {
             ));
         }
 
-        // Validar coordinador si se envía
-        if let Some(coordinador_id) = datos.coordinador_id {
-            Usuario::find_by_id(coordinador_id)
-                .one(&db)
-                .await
-                .map_err(map_db_err)?
-                .ok_or_else(|| AppError::BadRequest("El coordinador especificado no existe".to_string()))?;
-        }
+        // Validar coordinador
+        Usuario::find_by_id(datos.coordinador_id)
+            .one(&db)
+            .await
+            .map_err(map_db_err)?
+            .ok_or_else(|| AppError::BadRequest("El coordinador especificado no existe".to_string()))?;
 
-        let periodo_final = datos.periodo.clone().unwrap_or_else(|| {
-            let year = datos.fecha_inicio.year();
-            let month = datos.fecha_inicio.month();
-            format!("{}-{}", year, if month <= 6 { 1 } else { 2 })
-        });
-        let anio_pensum_final = datos.anio_pensum.unwrap_or(datos.fecha_inicio.year());
+        let periodo_final = datos.periodo.clone();
+        let anio_pensum_final = datos.anio_pensum;
 
         let mut txn = db.begin().await.map_err(map_db_err)?;
         let ahora = Utc::now();
@@ -174,22 +161,17 @@ impl CursoService {
         let curso_activo = curso::ActiveModel {
             id: Set(0), // Auto-increment field
             nombre: Set(datos.nombre.clone()),
-            codigo: Set(datos.codigo.clone()),
             descripcion: Set(datos.descripcion.clone()),
-            creditos: Set(datos.creditos),
-            horas_teoricas: Set(datos.horas_teoricas),
-            horas_practicas: Set(datos.horas_practicas),
-            area_conocimiento_id: Set(datos.area_conocimiento_id),
-            estado: Set(datos.estado),
-            periodo: Set(Some(periodo_final.clone())),
-            fecha_inicio: Set(Some(datos.fecha_inicio)),
-            fecha_fin: Set(Some(datos.fecha_fin)),
-            anio_pensum: Set(Some(anio_pensum_final)),
-            coordinador_id: Set(datos.coordinador_id),
-            plantilla_base_id: Set(None),
+            fecha_inicio: Set(datos.fecha_inicio),
+            fecha_fin: Set(datos.fecha_fin),
             prerequisito: Set(datos.prerequisito.clone()),
-            created_at: Set(Some(ahora)),
-            updated_at: Set(Some(ahora)),
+            coordinador_id: Set(datos.coordinador_id),
+            creado_en: Set(Some(ahora)),
+            plantilla_base_id: Set(None),
+            semestre: Set(datos.semestre),
+            periodo: Set(periodo_final.clone()),
+            anio_pensum: Set(anio_pensum_final),
+            area_conocimiento_id: Set(datos.area_conocimiento_id),
         };
 
         let curso_creado = curso_activo
@@ -197,34 +179,9 @@ impl CursoService {
             .await
             .map_err(map_db_err)?;
 
-        let plantilla_activa = plantilla_curso::ActiveModel {
-            id: Set(0), // Auto-increment field
-            nombre: Set(format!("Plantilla - {}", curso_creado.nombre)),
-            descripcion: Set(curso_creado.descripcion.clone()),
-            activa: Set(true),
-            curso_id: Set(Some(curso_creado.id)),
-            fecha_creacion: Set(Some(Utc::now())),
-            created_at: Set(Some(Utc::now())),
-            updated_at: Set(Some(Utc::now())),
-        };
-
-        let plantilla_creada = plantilla_activa
-            .insert(&mut txn)
-            .await
-            .map_err(map_db_err)?;
-
-        let mut curso_para_actualizar: curso::ActiveModel = curso_creado.clone().into();
-        curso_para_actualizar.plantilla_base_id = Set(Some(plantilla_creada.id));
-        curso_para_actualizar.updated_at = Set(Some(Utc::now()));
-
-        let curso_final = curso_para_actualizar
-            .update(&mut txn)
-            .await
-            .map_err(map_db_err)?;
-
         txn.commit().await.map_err(map_db_err)?;
 
-        Ok(curso_final)
+        Ok(curso_creado)
     }
 
     pub async fn editar_curso(
@@ -248,24 +205,8 @@ impl CursoService {
             curso_model.nombre = nombre;
         }
 
-        if let Some(codigo) = datos.codigo {
-            curso_model.codigo = codigo;
-        }
-
         if let Some(descripcion) = datos.descripcion {
-            curso_model.descripcion = Some(descripcion);
-        }
-
-        if let Some(creditos) = datos.creditos {
-            curso_model.creditos = creditos;
-        }
-
-        if let Some(horas_teoricas) = datos.horas_teoricas {
-            curso_model.horas_teoricas = horas_teoricas;
-        }
-
-        if let Some(horas_practicas) = datos.horas_practicas {
-            curso_model.horas_practicas = horas_practicas;
+            curso_model.descripcion = descripcion;
         }
 
         if let Some(area_id) = datos.area_conocimiento_id {
@@ -282,10 +223,6 @@ impl CursoService {
             curso_model.area_conocimiento_id = area_id;
         }
 
-        if let Some(estado) = datos.estado {
-            curso_model.estado = estado;
-        }
-
         if let Some(prerequisito) = datos.prerequisito {
             curso_model.prerequisito = Some(prerequisito);
         }
@@ -296,34 +233,30 @@ impl CursoService {
                 .await
                 .map_err(map_db_err)?
                 .ok_or_else(|| AppError::BadRequest("El coordinador especificado no existe".to_string()))?;
-            curso_model.coordinador_id = Some(coordinador_id);
+            curso_model.coordinador_id = coordinador_id;
         }
 
         if let Some(fecha_inicio) = datos.fecha_inicio {
-            curso_model.fecha_inicio = Some(fecha_inicio);
+            curso_model.fecha_inicio = fecha_inicio;
         }
 
         if let Some(fecha_fin) = datos.fecha_fin {
-            curso_model.fecha_fin = Some(fecha_fin);
+            curso_model.fecha_fin = fecha_fin;
         }
 
-        if let (Some(inicio), Some(fin)) = (curso_model.fecha_inicio, curso_model.fecha_fin) {
-            if fin <= inicio {
-                return Err(AppError::BadRequest(
-                    "La fecha de fin debe ser posterior a la fecha de inicio".to_string(),
-                ));
-            }
+        if curso_model.fecha_fin <= curso_model.fecha_inicio {
+            return Err(AppError::BadRequest(
+                "La fecha de fin debe ser posterior a la fecha de inicio".to_string(),
+            ));
         }
 
         if let Some(periodo) = datos.periodo {
-            curso_model.periodo = Some(periodo);
+            curso_model.periodo = periodo;
         }
 
         if let Some(anio_pensum) = datos.anio_pensum {
-            curso_model.anio_pensum = Some(anio_pensum);
+            curso_model.anio_pensum = anio_pensum;
         }
-
-        curso_model.updated_at = Some(Utc::now());
 
         let curso_activo: curso::ActiveModel = curso_model.into();
         let curso_actualizado = curso_activo
@@ -345,13 +278,6 @@ impl CursoService {
             .await
             .map_err(map_db_err)?
             .ok_or_else(|| AppError::NotFound("Curso no encontrado".to_string()))?;
-
-        if let Some(plantilla_id) = curso.plantilla_base_id {
-            PlantillaCurso::delete_by_id(plantilla_id)
-                .exec(&mut txn)
-                .await
-                .map_err(map_db_err)?;
-        }
 
         curso.delete(&mut txn).await.map_err(map_db_err)?;
         txn.commit().await.map_err(map_db_err)?;

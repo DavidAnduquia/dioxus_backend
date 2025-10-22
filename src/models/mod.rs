@@ -36,7 +36,6 @@ pub mod usuario;
 pub struct AppState {
     pub db: Option<DbExecutor>,
     pub config: Arc<Config>,
-    pub jwt_secret: Arc<[u8]>,
     pub jwt_encoding_key: Arc<EncodingKey>,
     pub jwt_decoding_key: Arc<DecodingKey>,
 }

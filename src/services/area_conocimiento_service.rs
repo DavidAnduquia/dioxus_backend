@@ -23,6 +23,7 @@ pub struct AreaConocimientoService {
 pub struct NuevaArea {
     pub nombre: String,
     pub descripcion: Option<String>,
+    pub color_etiqueta: Option<String>,
     pub estado: bool,
 }
 
@@ -30,6 +31,7 @@ pub struct NuevaArea {
 pub struct ActualizarArea {
     pub nombre: Option<String>,
     pub descripcion: Option<String>,
+    pub color_etiqueta: Option<String>,
     pub estado: Option<bool>,
 }
 
@@ -46,7 +48,7 @@ impl AreaConocimientoService {
     pub async fn obtener_areas(&self) -> Result<Vec<AreaConocimientoModel>, AppError> {
         let db = self.connection();
         let areas = AreaConocimiento::find()
-            .order_by_desc(area_conocimiento::Column::CreatedAt)
+            .order_by_desc(area_conocimiento::Column::FechaCreacion)
             .all(&db)
             .await?;
         Ok(areas)
@@ -85,9 +87,10 @@ impl AreaConocimientoService {
             id: Set(0), // Auto-increment field
             nombre: Set(nueva_area.nombre),
             descripcion: Set(nueva_area.descripcion),
+            color_etiqueta: Set(nueva_area.color_etiqueta.unwrap_or_else(|| "transparent".to_string())),
             estado: Set(nueva_area.estado),
-            created_at: Set(Some(ahora)),
-            updated_at: Set(Some(ahora)),
+            fecha_creacion: Set(Some(ahora)),
+            fecha_modificacion: Set(Some(ahora)),
         };
 
         let area_creada = area.insert(&db).await?;
@@ -116,11 +119,14 @@ impl AreaConocimientoService {
         if let Some(descripcion) = datos_actualizados.descripcion {
             area.descripcion = Set(Some(descripcion));
         }
+        if let Some(color_etiqueta) = datos_actualizados.color_etiqueta {
+            area.color_etiqueta = Set(color_etiqueta);
+        }
         if let Some(estado) = datos_actualizados.estado {
             area.estado = Set(estado);
         }
 
-        area.updated_at = Set(Some(Utc::now()));
+        area.fecha_modificacion = Set(Some(Utc::now()));
         let area_actualizada = area.update(&db).await?;
         Ok(area_actualizada)
     }
@@ -134,7 +140,7 @@ impl AreaConocimientoService {
 
         let mut area: area_conocimiento::ActiveModel = area.into();
         area.estado = Set(estado);
-        area.updated_at = Set(Some(Utc::now()));
+        area.fecha_modificacion = Set(Some(Utc::now()));
 
         let area_actualizada = area.update(&db).await?;
         Ok(area_actualizada)

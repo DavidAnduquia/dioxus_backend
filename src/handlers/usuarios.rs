@@ -2,9 +2,10 @@ use axum::{
     extract::{FromRef, Path, State},
     Json,
 };
+use serde::Serialize;
 
 use crate::{
-    models::{usuario as usuario_models, AppState},
+    models::{usuario as usuario_models, AppState, Claims},
     services::usuario_service::UsuarioService,
     utils::errors::AppError,
 };
@@ -16,10 +17,17 @@ pub struct LoginPayload {
     pub contrasena: String,
 }
 
+#[derive(Serialize)]
+pub struct LoginResponse {
+    pub token: String,
+    #[serde(flatten)]
+    pub usuario: usuario_models::Model,
+}
+
 pub async fn login_usuario(
     State(state): State<AppState>,
     Json(payload): Json<LoginPayload>,
-) -> Result<Json<usuario_models::Model>, AppError> {
+) -> Result<Json<LoginResponse>, AppError> {
     let service = UsuarioService::from_ref(&state);
     let usuario = service
         .login_usuario(
@@ -28,7 +36,34 @@ pub async fn login_usuario(
     )
         .await?;
 
-    Ok(Json(usuario))
+    // Generar token JWT
+    let token = generate_token(&usuario, state.jwt_encoding_key.as_ref())?;
+
+    Ok(Json(LoginResponse {
+        token,
+        usuario,
+    }))
+}
+
+fn generate_token(
+    usuario: &usuario_models::Model,
+    encoding_key: &jsonwebtoken::EncodingKey,
+) -> Result<String, AppError> {
+    use chrono::Utc;
+    use jsonwebtoken::{encode, Header};
+
+    let now = Utc::now();
+    let exp = (now + chrono::Duration::hours(24)).timestamp() as usize;
+    let iat = now.timestamp() as usize;
+
+    let claims = Claims {
+        sub: usuario.id.to_string(),
+        email: usuario.correo.clone(),
+        exp,
+        iat,
+    };
+
+    Ok(encode(&Header::default(), &claims, encoding_key)?)
 }
 
 // POST /api/usuarios/logout/:id

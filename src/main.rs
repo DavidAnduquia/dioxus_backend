@@ -53,14 +53,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create application state
     let db_executor = db_pool.map(DbExecutor::from_pool);
 
-    let jwt_secret = Arc::<[u8]>::from(config.jwt_secret.as_bytes().to_vec());
-    let jwt_encoding_key = Arc::new(jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_ref()));
-    let jwt_decoding_key = Arc::new(jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_ref()));
+    let jwt_secret = config.jwt_secret.as_bytes();
+    let jwt_encoding_key = Arc::new(jsonwebtoken::EncodingKey::from_secret(jwt_secret));
+    let jwt_decoding_key = Arc::new(jsonwebtoken::DecodingKey::from_secret(jwt_secret));
 
     let app_state = models::AppState {
         db: db_executor,
         config: Arc::clone(&config),
-        jwt_secret: Arc::clone(&jwt_secret),
         jwt_encoding_key,
         jwt_decoding_key,
     };
