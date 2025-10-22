@@ -1,5 +1,4 @@
 use axum::extract::FromRef;
-use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
     QueryFilter, Set,
@@ -58,7 +57,6 @@ impl ActividadService {
             return Err(AppError::BadRequest("El nombre es obligatorio".into()));
         }
 
-        let ahora = Utc::now();
         let actividad = actividad::ActiveModel {
             curso_id: Set(nueva_actividad.curso_id),
             profesor_id: Set(nueva_actividad.profesor_id),
@@ -68,8 +66,6 @@ impl ActividadService {
             fecha_fin: Set(nueva_actividad.fecha_fin),
             tipo_actividad: Set(nueva_actividad.tipo_actividad),
             privacidad: Set(nueva_actividad.privacidad),
-            created_at: Set(Some(ahora)),
-            updated_at: Set(Some(ahora)),
             ..Default::default()
         };
 
@@ -119,7 +115,6 @@ impl ActividadService {
             actividad.privacidad = Set(privacidad);
         }
 
-        actividad.updated_at = Set(Some(Utc::now()));
         let actividad_actualizada = actividad.update(&db).await?;
         Ok(actividad_actualizada)
     }

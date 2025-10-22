@@ -1,19 +1,31 @@
-use async_trait::async_trait;
+use axum::extract::FromRef;
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    models::notificacion::{self, Entity as Notificacion, Model as NotificacionModel},
+    database::DbExecutor,
+    models::{
+        notificacion::{self, Entity as Notificacion, Model as NotificacionModel},
+        AppState,
+    },
     utils::errors::AppError,
 };
 
 #[derive(Debug, Clone)]
 pub struct NotificacionService {
-    db: DatabaseConnection,
+    db: DbExecutor,
+}
+
+impl FromRef<AppState> for NotificacionService {
+    fn from_ref(state: &AppState) -> Self {
+        let executor = state.db.clone().expect("Database connection is not available");
+        NotificacionService::new(executor)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +50,7 @@ pub struct ActualizarNotificacion {
 }
 
 impl NotificacionService {
-    pub fn new(db: DatabaseConnection) -> Self {
+    pub fn new(db: DbExecutor) -> Self {
         Self { db }
     }
 
@@ -77,7 +89,7 @@ impl NotificacionService {
             ..Default::default()
         };
 
-        let notificacion_creada = notificacion.insert(&self.db).await?;
+        let notificacion_creada = notificacion.insert(&self.db.connection()).await?;
         Ok(notificacion_creada)
     }
 
@@ -85,7 +97,7 @@ impl NotificacionService {
         &self,
         id: i32,
     ) -> Result<Option<NotificacionModel>, DbErr> {
-        Notificacion::find_by_id(id).one(&self.db).await
+        Notificacion::find_by_id(id).one(&self.db.connection()).await
     }
 
     pub async fn obtener_por_usuario(
@@ -102,7 +114,7 @@ impl NotificacionService {
             query = query.filter(notificacion::Column::Leida.eq(leida_val));
         }
 
-        let total = query.clone().count(&self.db).await?;
+        let total = query.clone().count(&self.db.connection()).await?;
 
         if let Some(limit_val) = limit {
             query = query.limit(limit_val);
@@ -114,7 +126,7 @@ impl NotificacionService {
 
         let notificaciones = query
             .order_by_desc(notificacion::Column::CreatedAt)
-            .all(&self.db)
+            .all(&self.db.connection())
             .await?;
 
         Ok((notificaciones, total))
@@ -125,7 +137,7 @@ impl NotificacionService {
         id: i32,
     ) -> Result<NotificacionModel, AppError> {
         let notificacion = Notificacion::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.connection())
             .await?
             .ok_or_else(|| AppError::NotFound("Notificación no encontrada".to_string()))?;
 
@@ -133,7 +145,7 @@ impl NotificacionService {
         notificacion.leida = Set(true);
         notificacion.updated_at = Set(Some(Utc::now()));
 
-        let notificacion_actualizada = notificacion.update(&self.db).await?;
+        let notificacion_actualizada = notificacion.update(&self.db.connection()).await?;
         Ok(notificacion_actualizada)
     }
 
@@ -141,27 +153,37 @@ impl NotificacionService {
         &self,
         usuario_id: i64,
     ) -> Result<u64, AppError> {
-        let result = Notificacion::update_many()
-            .col_expr(notificacion::Column::Leida, Expr::value(true))
-            .col_expr(notificacion::Column::UpdatedAt, Expr::value(Utc::now()))
+        // Obtener todas las notificaciones no leídas del usuario
+        let notificaciones = Notificacion::find()
             .filter(notificacion::Column::UsuarioId.eq(usuario_id))
             .filter(notificacion::Column::Leida.eq(false))
-            .exec(&self.db)
+            .all(&self.db.connection())
             .await?;
 
-        Ok(result.rows_affected)
+        let mut count = 0;
+        for notif in notificaciones {
+            let mut notif: notificacion::ActiveModel = notif.into();
+            notif.leida = Set(true);
+            notif.updated_at = Set(Some(Utc::now()));
+            notif.update(&self.db.connection()).await?;
+            count += 1;
+        }
+
+        Ok(count)
     }
 
+    #[allow(dead_code)]
     pub async fn eliminar_notificacion(&self, id: i32) -> Result<(), AppError> {
         let notificacion = Notificacion::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.connection())
             .await?
             .ok_or_else(|| AppError::NotFound("Notificación no encontrada".to_string()))?;
 
-        notificacion.delete(&self.db).await?;
+        notificacion.delete(&self.db.connection()).await?;
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn obtener_no_leidas(
         &self,
         usuario_id: i64,
@@ -177,17 +199,18 @@ impl NotificacionService {
 
         query
             .order_by_desc(notificacion::Column::CreatedAt)
-            .all(&self.db)
+            .all(&self.db.connection())
             .await
     }
 
+    #[allow(dead_code)]
     pub async fn actualizar_datos(
         &self,
         id: i32,
         datos: Value,
     ) -> Result<NotificacionModel, AppError> {
         let notificacion = Notificacion::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.connection())
             .await?
             .ok_or_else(|| AppError::NotFound("Notificación no encontrada".to_string()))?;
 
@@ -195,82 +218,32 @@ impl NotificacionService {
         notificacion.datos_adicionales = Set(Some(datos));
         notificacion.updated_at = Set(Some(Utc::now()));
 
-        let notificacion_actualizada = notificacion.update(&self.db).await?;
+        let notificacion_actualizada = notificacion.update(&self.db.connection()).await?;
         Ok(notificacion_actualizada)
     }
 
+    #[allow(dead_code)]
     pub async fn obtener_estadisticas(
         &self,
         usuario_id: i64,
     ) -> Result<(u64, u64, u64), AppError> {
         let total = Notificacion::find()
             .filter(notificacion::Column::UsuarioId.eq(usuario_id))
-            .count(&self.db)
+            .count(&self.db.connection())
             .await?;
 
         let leidas = Notificacion::find()
             .filter(notificacion::Column::UsuarioId.eq(usuario_id))
             .filter(notificacion::Column::Leida.eq(true))
-            .count(&self.db)
+            .count(&self.db.connection())
             .await?;
 
         let no_leidas = Notificacion::find()
             .filter(notificacion::Column::UsuarioId.eq(usuario_id))
             .filter(notificacion::Column::Leida.eq(false))
-            .count(&self.db)
+            .count(&self.db.connection())
             .await?;
 
         Ok((total, leidas, no_leidas))
-    }
-}
-
-#[async_trait]
-impl crate::traits::service::CrudService<NotificacionModel> for NotificacionService {
-    async fn get_all(&self) -> Result<Vec<NotificacionModel>, AppError> {
-        Notificacion::find()
-            .order_by_desc(notificacion::Column::CreatedAt)
-            .all(&self.db)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn get_by_id(&self, id: i32) -> Result<Option<NotificacionModel>, AppError> {
-        self.obtener_por_id(id).await.map_err(Into::into)
-    }
-
-    async fn create(&self, data: NotificacionModel) -> Result<NotificacionModel, AppError> {
-        self.crear_notificacion(NuevaNotificacion {
-            usuario_id: data.usuario_id,
-            titulo: data.titulo,
-            mensaje: data.mensaje,
-            tipo: data.tipo,
-            leida: Some(data.leida),
-            enlace: data.enlace,
-            datos_adicionales: data.datos_adicionales,
-        })
-        .await
-    }
-
-    async fn update(
-        &self,
-        id: i32,
-        data: NotificacionModel,
-    ) -> Result<NotificacionModel, AppError> {
-        self.actualizar_datos(
-            id,
-            ActualizarNotificacion {
-                titulo: Some(data.titulo),
-                mensaje: Some(data.mensaje),
-                tipo: Some(data.tipo),
-                leida: Some(data.leida),
-                enlace: data.enlace,
-                datos_adicionales: data.datos_adicionales,
-            },
-        )
-        .await
-    }
-
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
-        self.eliminar_notificacion(id).await
     }
 }

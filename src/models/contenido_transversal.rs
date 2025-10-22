@@ -3,16 +3,20 @@ use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "contenidos_transversales")]
+#[sea_orm(table_name = "contenido_transversal")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
     pub id: i32,
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub area_conocimiento_id: i32,
     pub curso_id: Option<i32>,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
+    pub origen_tipo: String,
+    pub origen_id: i32,
+    pub profesor_id: Option<i32>,
+    pub tipo_contenido: String,
+    pub ruta_archivo: Option<String>,
+    pub enlace_video: Option<String>,
+    pub fecha_subida: Option<DateTime<Utc>>,
+    pub privacidad: Option<String>,
+    pub descripcion: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

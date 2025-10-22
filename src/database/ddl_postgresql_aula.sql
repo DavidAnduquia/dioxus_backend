@@ -2,7 +2,7 @@
 -- Migración completa a PostgreSQL
 
 -- Habilitar extensión UUID si no está habilitada
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+--CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Tabla para roles (Coordinador, Profesor, Estudiante)
 CREATE TABLE roles (
@@ -62,22 +62,29 @@ CREATE TABLE cursos (
 );
 
 -- Tabla para plantillas de cursos
-CREATE TABLE plantillas_curso (
+CREATE TABLE IF NOT EXISTS plantillas_cursos (
     id SERIAL PRIMARY KEY,
-    curso_id INTEGER REFERENCES cursos(id) ON DELETE CASCADE,
+    nombre VARCHAR(150) NOT NULL,
     descripcion TEXT,
-    fecha_creacion TIMESTAMPTZ DEFAULT NOW()
+    activa BOOLEAN NOT NULL DEFAULT true,
+    curso_id INTEGER REFERENCES cursos(id) ON DELETE CASCADE,
+    fecha_creacion TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Tabla para estudiantes matriculados y su historial
-CREATE TABLE historial_curso_estudiante (
+CREATE TABLE IF NOT EXISTS historial_cursos_estudiantes (
     id SERIAL PRIMARY KEY,
-    estudiante_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
-    curso_id INTEGER REFERENCES cursos(id) ON DELETE CASCADE,
-    semestre VARCHAR(20),
-    fecha_matricula TIMESTAMPTZ DEFAULT NOW(),
-    calificacion DECIMAL(5,2),
-    CONSTRAINT uq_estudiante_curso UNIQUE (estudiante_id, curso_id)
+    curso_id INTEGER NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+    estudiante_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    fecha_inscripcion TIMESTAMPTZ DEFAULT NOW(),
+    estado VARCHAR(30) NOT NULL DEFAULT 'en_progreso',
+    calificacion_final DOUBLE PRECISION,
+    aprobado BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT uq_historial_curso_estudiante UNIQUE (curso_id, estudiante_id)
 );
 
 -- Tabla para profesores asignados a los cursos
@@ -260,11 +267,11 @@ CREATE INDEX idx_actividades_curso ON actividades(curso_id);
 CREATE INDEX idx_calificaciones_actividad ON calificaciones(actividad_id);
 CREATE INDEX idx_calificaciones_estudiante ON calificaciones(estudiante_id);
 
--- Función para actualizar automáticamente los timestamps
-CREATE OR REPLACE FUNCTION update_modified_column(target_column TEXT DEFAULT 'updated_at')
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW := jsonb_populate_record(NEW, jsonb_build_object(target_column, NOW()));
+-- Insertar roles básicos
+INSERT INTO roles (nombre) VALUES
+    ('Coordinador'),
+    ('Profesor'),
+    ('Estudiante')
 ON CONFLICT (nombre) DO NOTHING;
 
 -- Insertar áreas de conocimiento de ejemplo
@@ -278,16 +285,38 @@ INSERT INTO areas_conocimiento (nombre, descripcion, color_etiqueta, estado) VAL
     ('Educación Física', 'Desarrollo corporal, deportes y actividad física', '#FFB74D', true)
 ON CONFLICT (nombre) DO NOTHING;
 
--- Función para hashear contraseñas (deberías usar bcrypt en tu aplicación)
-CREATE OR REPLACE FUNCTION hash_password()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- En un entorno real, usa bcrypt o similar
-    -- NEW.contrasena = crypt(NEW.contrasena, gen_salt('bf'));
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Insertar usuarios de ejemplo
+INSERT INTO usuarios (
+    nombre,
+    documento_nit,
+    correo,
+    contrasena,
+    foto_url,
+    rol_id,
+    semestre,
+    genero,
+    fecha_nacimiento,
+    estado
+) VALUES
+    ('David A. Anduquia', '1234567890', 'david.anduquia@aulavirtual.com', 'admin123', 'https://randomuser.me/api/portraits/men/1.jpg', 1, NULL, 'M', '1980-01-01', true),
+    ('María García Profesora', 'PROF456', 'maria.garcia@aulavirtual.com', 'prof123', 'https://randomuser.me/api/portraits/women/1.jpg', 2, NULL, 'F', '1985-05-15', true),
+    ('Carlos López Estudiante', 'EST789', 'carlos.lopez@aulavirtual.com', 'est123', 'https://randomuser.me/api/portraits/men/2.jpg', 3, 5, 'M', '2000-10-20', true),
+    ('Ana Rodríguez Estudiante', 'EST790', 'ana.rodriguez@aulavirtual.com', 'est123', 'https://randomuser.me/api/portraits/women/2.jpg', 3, 5, 'F', '2001-03-15', true)
+ON CONFLICT (documento_nit) DO NOTHING;
 
-CREATE TRIGGER hash_user_password
-BEFORE INSERT OR UPDATE OF contrasena ON usuarios
-FOR EACH ROW EXECUTE FUNCTION hash_password();
+-- Insertar cursos de ejemplo
+INSERT INTO cursos (
+    nombre,
+    descripcion,
+    fecha_inicio,
+    fecha_fin,
+    prerequisito,
+    coordinador_id,
+    semestre,
+    periodo,
+    anio_pensum,
+    area_conocimiento_id
+) VALUES
+    ('Álgebra Básica', 'Fundamentos de álgebra para educación media', '2025-02-01', '2025-06-30', NULL, 1, 5, '2025-1', 2025, 1),
+    ('Física Mecánica', 'Introducción a la física mecánica clásica', '2025-02-01', '2025-06-30', 'Álgebra Básica', 1, 6, '2025-1', 2025, 2)
+ON CONFLICT DO NOTHING;

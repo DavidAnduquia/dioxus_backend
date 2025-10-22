@@ -16,7 +16,7 @@ pub mod actividad_service;
 // pub mod evaluacion_calificacion_service;
 // pub mod evento_programado_service;
 // pub mod modulo_archivo_service;
-// pub mod notificacion_service;
+pub mod notificacion_service;
 // pub mod portafolio_service;
 // pub mod portafolio_contenido_service;
 // pub mod pregunta_examen_service;

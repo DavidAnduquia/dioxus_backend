@@ -4,6 +4,7 @@ use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "plantillas_cursos")]
+#[allow(dead_code)]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
     pub id: i32,
@@ -17,6 +18,7 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+#[allow(dead_code)]
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}

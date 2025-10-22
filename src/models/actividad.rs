@@ -15,8 +15,6 @@ pub struct Model {
     pub fecha_fin: NaiveTime,
     pub tipo_actividad: String,
     pub privacidad: String,
-    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

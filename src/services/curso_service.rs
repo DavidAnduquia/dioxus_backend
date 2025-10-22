@@ -1,7 +1,7 @@
 use axum::extract::FromRef;
 use chrono::{NaiveDate, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
+    ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
     QueryFilter, QueryOrder, Set, TransactionTrait, Order
 };
 use serde::{Deserialize, Serialize};
@@ -159,7 +159,7 @@ impl CursoService {
         let ahora = Utc::now();
 
         let curso_activo = curso::ActiveModel {
-            id: Set(0), // Auto-increment field
+            id: NotSet, // Auto-increment field
             nombre: Set(datos.nombre.clone()),
             descripcion: Set(datos.descripcion.clone()),
             fecha_inicio: Set(datos.fecha_inicio),
@@ -328,14 +328,14 @@ impl CursoService {
 
         let modulos = ContenidoTransversal::find()
             .filter(contenido_transversal::Column::CursoId.eq(id))
-            .order_by(contenido_transversal::Column::CreatedAt, Order::Asc)
+            .order_by(contenido_transversal::Column::FechaSubida, Order::Asc)
             .all(&db)
             .await
             .map_err(map_db_err)?;
 
         let actividades = Actividad::find()
             .filter(actividad::Column::CursoId.eq(id))
-            .order_by(actividad::Column::CreatedAt, Order::Asc)
+            .order_by(actividad::Column::Id, Order::Asc)
             .all(&db)
             .await
             .map_err(map_db_err)?;

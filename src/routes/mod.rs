@@ -19,8 +19,9 @@ pub mod examen;
 pub mod matricula;
 pub mod modulo;
 pub mod actividad;
+pub mod notificacion;
 
-#[derive(Deserialize)] 
+#[derive(Deserialize)]
 struct OAuth2TokenRequest {
     grant_type: String,
     username: String,
@@ -52,30 +53,25 @@ pub fn create_routes() -> Router<AppState> {
         .route("/live", get(handlers::health::liveness_check))
         .route("/auth/register", post(handlers::auth::register))
         .route("/auth/login", post(handlers::auth::login))
-        .route("/auth/token", post(oauth2_token_endpoint))  // Endpoint OAuth2
+        .route("/auth/token", post(oauth2_token_endpoint))
         .route("/users/me", get(handlers::users::get_current_user))
-        .route("/ws", get(handlers::socket_manager::websocket_handler))  // WebSocket endpoint
-        // /* Cambio nuevo */ Endpoints para métricas de memoria
+        .route("/ws", get(handlers::socket_manager::websocket_handler))
         .route("/metrics/memory", get(handlers::metrics::get_memory_metrics))
         .route("/metrics/optimize", post(handlers::metrics::optimize_memory))
-        // .route("/posts", get(handlers::posts::get_posts))
-        // .route("/posts", post(handlers::posts::create_post))
-        // .route("/posts/:id", get(handlers::posts::get_post))
-        // .route("/posts/:id", put(handlers::posts::update_post))
-        // .route("/posts/:id", delete(handlers::posts::delete_post))
 }
 
 pub fn create_app() -> Router<AppState> {
     Router::new()
         .merge(create_routes())
-        .merge(roles::roles_routes())  // Agregar rutas de roles
-        .merge(usuarios::usuarios_routes()) // Agregar rutas de usuarios
+        .merge(roles::roles_routes())
+        .merge(usuarios::usuarios_routes())
         .merge(area_conocimiento::area_conocimiento_routes())
         .merge(curso::curso_routes())
         .merge(examen::examen_routes())
         .merge(matricula::matricula_routes())
         .merge(modulo::modulo_routes())
         .merge(actividad::actividad_routes())
+        .merge(notificacion::notificacion_routes())
         .route("/api-docs/openapi.json", get(serve_openapi_spec))
         .route("/swagger-ui", get(serve_swagger_ui))
         .route("/swagger-ui/", get(serve_swagger_ui))
@@ -111,7 +107,6 @@ pub fn create_app() -> Router<AppState> {
 )]
 pub struct ApiDoc;
 
-
 async fn oauth2_token_endpoint(
     State(state): State<AppState>,
     Form(form): Form<OAuth2TokenRequest>,
@@ -120,25 +115,21 @@ async fn oauth2_token_endpoint(
     use jsonwebtoken::{encode, Header};
     use crate::models::{Claims, User};
 
-    // Validar grant_type
     if form.grant_type != "password" {
         return Err(Json(json!({
             "error": "unsupported_grant_type",
             "error_description": "Only 'password' grant type is supported"
         })));
     }
-    
-    // Validar client_id si se proporciona (opcional en OAuth2 password flow)
+
     if !form.client_id.is_empty() {
         tracing::debug!("Client ID provided: {}", form.client_id);
     }
-    
-    // Validar client_secret si se proporciona
+
     if !form.client_secret.is_empty() {
         tracing::debug!("Client secret provided");
     }
 
-    // Obtener conexión a la base de datos
     let db = state.get_db().map_err(|_| {
         Json(json!({
             "error": "server_error",
@@ -146,7 +137,6 @@ async fn oauth2_token_endpoint(
         }))
     })?;
 
-    // Buscar usuario por email
     let user = sqlx::query_as::<_, User>(
         "SELECT id, email, password_hash, name, created_at, updated_at FROM users WHERE email = $1"
     )
@@ -171,7 +161,6 @@ async fn oauth2_token_endpoint(
         }
     };
 
-    // Verificar password
     let password_valid = verify(&form.password, &user.password_hash)
         .map_err(|e| {
             tracing::error!("Password verification error: {:?}", e);
@@ -188,7 +177,6 @@ async fn oauth2_token_endpoint(
         })));
     }
 
-    // Generar JWT token
     let now = chrono::Utc::now();
     let exp = now + chrono::Duration::hours(24);
 
@@ -212,13 +200,12 @@ async fn oauth2_token_endpoint(
         }))
     })?;
 
-    // Usar el scope proporcionado o el por defecto
     let scope = if !form.scope.is_empty() {
         form.scope
     } else {
         "read write".to_string()
     };
-    
+
     Ok(Json(OAuth2TokenResponse {
         access_token: token,
         token_type: "Bearer".to_string(),
@@ -228,7 +215,6 @@ async fn oauth2_token_endpoint(
     }))
 }
 
-// Cache global para OpenAPI spec (se genera una sola vez)
 static OPENAPI_SPEC: OnceLock<String> = OnceLock::new();
 
 fn generate_openapi_spec() -> String {
@@ -237,7 +223,6 @@ fn generate_openapi_spec() -> String {
     let mut openapi = ApiDoc::openapi();
     let components = openapi.components.get_or_insert_with(Default::default);
 
-    // Bearer Token
     components.add_security_scheme(
         "bearer_auth",
         SecurityScheme::Http(
@@ -245,12 +230,10 @@ fn generate_openapi_spec() -> String {
         ),
     );
 
-    // OAuth2 Password Flow
     let password_flow = Password::new("/auth/token", Scopes::new());
     let oauth2 = OAuth2::new([Flow::Password(password_flow)]);
     components.add_security_scheme("oauth2_password", SecurityScheme::OAuth2(oauth2));
 
-    // Seguridad global
     let security = vec![
         utoipa::openapi::security::SecurityRequirement::new("bearer_auth", Vec::<String>::new()),
         utoipa::openapi::security::SecurityRequirement::new("oauth2_password", Vec::<String>::new())
@@ -320,4 +303,3 @@ async fn serve_oauth2_redirect() -> Html<&'static str> {
 </html>
 "#)
 }
-

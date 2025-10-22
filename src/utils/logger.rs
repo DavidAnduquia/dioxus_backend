@@ -4,6 +4,8 @@ use std::sync::{Mutex, OnceLock};
 use std::collections::VecDeque;
 use chrono::{FixedOffset, TimeZone, Utc};
 use tracing_subscriber::{fmt::writer::MakeWriter, layer::SubscriberExt, EnvFilter, fmt, util::SubscriberInitExt};
+use std::env;
+use std::path::{Path, PathBuf};
 
 // Zona horaria de Bogotá (UTC-5)
 struct BogotaTime;
@@ -22,13 +24,13 @@ const FLUSH_THRESHOLD: usize = 256;  // Flush cada 256 bytes (inmediato)
 
 struct CircularLogBuffer {
     buffer: VecDeque<u8>,
-    log_dir: &'static str,
+    log_dir: String,
     app_name: &'static str,
     bytes_written: usize,
 }
 
 impl CircularLogBuffer {
-    fn new(log_dir: &'static str, app_name: &'static str) -> Self {
+    fn new(log_dir: String, app_name: &'static str) -> Self {
         Self {
             buffer: VecDeque::with_capacity(FLUSH_THRESHOLD),
             log_dir,
@@ -61,7 +63,7 @@ impl CircularLogBuffer {
         }
 
         // Crear directorio si no existe
-        std::fs::create_dir_all(self.log_dir).ok();
+        std::fs::create_dir_all(self.log_dir.clone()).ok();
 
         // Zona horaria de Bogotá (UTC-5)
         let bogota_tz = FixedOffset::west_opt(5 * 3600).unwrap();
@@ -169,7 +171,7 @@ pub fn init_logger_console_only() -> Result<(), Box<dyn std::error::Error>> {
 /// Inicializa el sistema de logging con buffer circular de 20KB
 /// 
 /// # Arguments
-/// * `log_dir` - Directorio donde se guardarán los logs
+/// * `log_dir` - Directorio donde se guardarán los logs (relativo al ejecutable)
 /// * `app_name` - Nombre de la aplicación para los archivos de log
 /// 
 /// # Returns
@@ -180,12 +182,20 @@ pub fn init_logger_console_only() -> Result<(), Box<dyn std::error::Error>> {
 /// - Escritura lazy (flush cada 4KB o al cerrar)
 /// - Archivo se abre/cierra en cada flush (sin mantener handle abierto)
 /// - Logs se persisten correctamente entre reinicios
+/// - Siempre usa directorio del ejecutable en ejecución para logs
+/// - Calcula path una sola vez para máxima eficiencia
 pub fn init_logger(log_dir: &'static str, app_name: &'static str) -> Result<(), Box<dyn std::error::Error>> {
     static INIT: OnceLock<()> = OnceLock::new();
     
     INIT.get_or_init(|| {
-        // Inicializar buffer circular
-        LOG_BUFFER.get_or_init(|| Mutex::new(CircularLogBuffer::new(log_dir, app_name)));
+        // Calcular path una sola vez y convertir a &'static str para eficiencia
+        let exe_path = env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+        let logs_dir_path = exe_path.parent().unwrap_or(Path::new(".")).join(log_dir);
+        let logs_dir_str = logs_dir_path.to_string_lossy().to_string();
+        let adjusted_log_dir: &'static str = Box::leak(logs_dir_str.into_boxed_str());
+
+        // Inicializar buffer circular (lazy, solo si se usa)
+        LOG_BUFFER.get_or_init(|| Mutex::new(CircularLogBuffer::new(adjusted_log_dir.to_string(), app_name)));
 
         // Configurar filtro de niveles
         let env_filter = EnvFilter::try_from_default_env()
