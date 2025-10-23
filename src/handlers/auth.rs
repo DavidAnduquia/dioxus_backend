@@ -33,19 +33,22 @@ pub async fn register(
     let db = state.get_db()?;
 
     // Check if user already exists
-    let existing_user = sqlx::query_as::<_, User>(
-        "SELECT * FROM users WHERE email = $1"
+    let user_exists: Option<i32> = sqlx::query_scalar(
+        "SELECT 1 FROM users WHERE email = $1"
     )
     .bind(&payload.email)
     .fetch_optional(db)
     .await?;
 
-    if existing_user.is_some() {
-        return Err(AppError::BadRequest("User already exists".to_string()));
+    if user_exists.is_some() {
+        return Err(AppError::BadRequest("User already exists".into()));
     }
 
     // Hash password
-    let password_hash = hash(payload.password, DEFAULT_COST)?;
+    let password = payload.password.clone();
+    let password_hash = tokio::task::spawn_blocking(move || hash(password, DEFAULT_COST))
+        .await
+        .map_err(|e| AppError::InternalServerError(format!("Task join error: {}", e).into()))??;
 
     // Create user
     let user = sqlx::query_as::<_, User>(
@@ -100,11 +103,17 @@ pub async fn login(
     .bind(&payload.email)
     .fetch_optional(db)
     .await?
-    .ok_or_else(|| AppError::Unauthorized("Invalid credentials".to_string()))?;
+    .ok_or_else(|| AppError::Unauthorized("Invalid credentials".into()))?;
 
     // Verify password
-    if !verify(&payload.password, &user.password_hash)? {
-        return Err(AppError::Unauthorized("Invalid credentials".to_string()));
+    let password = payload.password.clone();
+    let password_hash = user.password_hash.clone();
+    let is_valid = tokio::task::spawn_blocking(move || verify(&password, &password_hash))
+        .await
+        .map_err(|e| AppError::InternalServerError(format!("Task join error: {}", e).into()))??;
+
+    if !is_valid {
+        return Err(AppError::Unauthorized("Invalid credentials".into()));
     }
 
     // Generate JWT token

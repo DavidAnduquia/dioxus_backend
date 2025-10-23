@@ -46,7 +46,7 @@ impl ModuloService {
         nuevo_modulo: NuevoModulo,
     ) -> Result<ModuloModel, AppError> {
         if nuevo_modulo.nombre.trim().is_empty() {
-            return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El nombre es obligatorio".into()));
         }
 
         let db = self.connection();
@@ -95,14 +95,14 @@ impl ModuloService {
         let modulo = Modulo::find_by_id(id)
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Módulo no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Módulo no encontrado".into()))?;
 
         let mut modulo: modulo::ActiveModel = modulo.into();
         let ahora = Utc::now();
 
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".to_string()));
+                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
             }
             modulo.nombre = Set(nombre);
         }
@@ -130,7 +130,7 @@ impl ModuloService {
         let modulo = Modulo::find_by_id(id)
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Módulo no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Módulo no encontrado".into()))?;
 
         modulo.delete(&db).await?;
         Ok(())

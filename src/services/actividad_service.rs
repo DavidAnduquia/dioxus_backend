@@ -1,6 +1,6 @@
 use axum::extract::FromRef;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
     QueryFilter, Set,
 };
 
@@ -80,12 +80,10 @@ impl ActividadService {
         datos_actualizados: UpdateActividad,
     ) -> Result<ActividadModel, AppError> {
         let db = self.connection();
-        let actividad = Actividad::find_by_id(id)
-            .one(&db)
-            .await?
-            .ok_or_else(|| AppError::NotFound("Actividad no encontrada".into()))?;
-
-        let mut actividad: actividad::ActiveModel = actividad.into();
+        let mut actividad = actividad::ActiveModel {
+            id: Set(id),
+            ..Default::default()
+        };
 
         if let Some(curso_id) = datos_actualizados.curso_id {
             actividad.curso_id = Set(curso_id);
@@ -121,12 +119,12 @@ impl ActividadService {
 
     pub async fn eliminar_actividad(&self, id: i32) -> Result<(), AppError> {
         let db = self.connection();
-        let actividad = Actividad::find_by_id(id)
-            .one(&db)
-            .await?
-            .ok_or_else(|| AppError::NotFound("Actividad no encontrada".into()))?;
+        let res = Actividad::delete_by_id(id).exec(&db).await?;
 
-        actividad.delete(&db).await?;
+        if res.rows_affected == 0 {
+            return Err(AppError::NotFound("Actividad no encontrada".into()));
+        }
+
         Ok(())
     }
 }

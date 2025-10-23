@@ -111,7 +111,7 @@ impl CursoService {
             .one(&db)
             .await
             .map_err(map_db_err)?
-            .ok_or_else(|| AppError::NotFound(format!("Curso con id {} no encontrado", id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("Curso con id {} no encontrado", id).into()))?;
 
         Ok(CursoDetallado {
             curso: result.0,
@@ -121,14 +121,14 @@ impl CursoService {
 
     pub async fn crear_curso(&self, datos: NuevoCurso) -> Result<CursoModel, AppError> {
         if datos.nombre.trim().is_empty() {
-            return Err(AppError::BadRequest("El nombre del curso es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El nombre del curso es obligatorio".into()));
         }
         if datos.descripcion.trim().is_empty() {
-            return Err(AppError::BadRequest("La descripción del curso es obligatoria".to_string()));
+            return Err(AppError::BadRequest("La descripción del curso es obligatoria".into()));
         }
         if datos.fecha_fin <= datos.fecha_inicio {
             return Err(AppError::BadRequest(
-                "La fecha de fin debe ser posterior a la fecha de inicio".to_string(),
+                "La fecha de fin debe ser posterior a la fecha de inicio".into(),
             ));
         }
 
@@ -138,10 +138,10 @@ impl CursoService {
             .one(&db)
             .await
             .map_err(map_db_err)?
-            .ok_or_else(|| AppError::BadRequest("El área de conocimiento especificada no existe".to_string()))?;
+            .ok_or_else(|| AppError::BadRequest("El área de conocimiento especificada no existe".into()))?;
         if !area.estado {
             return Err(AppError::BadRequest(
-                "El área de conocimiento especificada no está activa".to_string(),
+                "El área de conocimiento especificada no está activa".into(),
             ));
         }
 
@@ -150,7 +150,7 @@ impl CursoService {
             .one(&db)
             .await
             .map_err(map_db_err)?
-            .ok_or_else(|| AppError::BadRequest("El coordinador especificado no existe".to_string()))?;
+            .ok_or_else(|| AppError::BadRequest("El coordinador especificado no existe".into()))?;
 
         let periodo_final = datos.periodo.clone();
         let anio_pensum_final = datos.anio_pensum;
@@ -196,11 +196,11 @@ impl CursoService {
             .one(&mut txn)
             .await
             .map_err(map_db_err)?
-            .ok_or_else(|| AppError::NotFound("Curso no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Curso no encontrado".into()))?;
 
         if let Some(nombre) = datos.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".to_string()));
+                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
             }
             curso_model.nombre = nombre;
         }
@@ -214,10 +214,10 @@ impl CursoService {
                 .one(&mut txn)
                 .await
                 .map_err(map_db_err)?
-                .ok_or_else(|| AppError::BadRequest("El área de conocimiento especificada no existe".to_string()))?;
+                .ok_or_else(|| AppError::BadRequest("El área de conocimiento especificada no existe".into()))?;
             if !area.estado {
                 return Err(AppError::BadRequest(
-                    "El área de conocimiento especificada no está activa".to_string(),
+                    "El área de conocimiento especificada no está activa".into(),
                 ));
             }
             curso_model.area_conocimiento_id = area_id;
@@ -232,7 +232,7 @@ impl CursoService {
                 .one(&mut txn)
                 .await
                 .map_err(map_db_err)?
-                .ok_or_else(|| AppError::BadRequest("El coordinador especificado no existe".to_string()))?;
+                .ok_or_else(|| AppError::BadRequest("El coordinador especificado no existe".into()))?;
             curso_model.coordinador_id = coordinador_id;
         }
 
@@ -246,7 +246,7 @@ impl CursoService {
 
         if curso_model.fecha_fin <= curso_model.fecha_inicio {
             return Err(AppError::BadRequest(
-                "La fecha de fin debe ser posterior a la fecha de inicio".to_string(),
+                "La fecha de fin debe ser posterior a la fecha de inicio".into(),
             ));
         }
 
@@ -277,7 +277,7 @@ impl CursoService {
             .one(&mut txn)
             .await
             .map_err(map_db_err)?
-            .ok_or_else(|| AppError::NotFound("Curso no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Curso no encontrado".into()))?;
 
         curso.delete(&mut txn).await.map_err(map_db_err)?;
         txn.commit().await.map_err(map_db_err)?;
@@ -324,7 +324,7 @@ impl CursoService {
             .one(&db)
             .await
             .map_err(map_db_err)?
-            .ok_or_else(|| AppError::NotFound("Curso no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Curso no encontrado".into()))?;
 
         let modulos = ContenidoTransversal::find()
             .filter(contenido_transversal::Column::CursoId.eq(id))
@@ -361,5 +361,5 @@ impl CursoService {
     }
 }
 fn map_db_err(err: DbErr) -> AppError {
-    AppError::InternalServerError(err.to_string())
+    AppError::InternalServerError(err.to_string().into())
 }

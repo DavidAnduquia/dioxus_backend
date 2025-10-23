@@ -37,7 +37,7 @@ pub async fn obtener_actividad(
     let service = ActividadService::from_ref(&state);
     match service.obtener_actividad_por_id(id).await? {
         Some(actividad) => Ok(Json(actividad)),
-        None => Err(AppError::NotFound(format!("Actividad {} no encontrada", id))),
+        None => Err(AppError::NotFound(std::borrow::Cow::Owned(format!("Actividad {} no encontrada", id)))),
     }
 }
 

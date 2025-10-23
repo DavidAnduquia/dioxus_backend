@@ -38,7 +38,7 @@ pub async fn obtener_examen(
     let service = ExamenService::from_ref(&state);
     match service.obtener_examen_por_id(id).await.map_err(AppError::from)? {
         Some(examen) => Ok(Json(examen)),
-        None => Err(AppError::NotFound(format!("Examen {} no encontrado", id))),
+        None => Err(AppError::NotFound(format!("Examen {} no encontrado", id).into())),
     }
 }
 

@@ -61,7 +61,7 @@ impl UsuarioService {
             .filter(usuario::Column::Contrasena.eq(contrasena))
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Credenciales inválidas".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Credenciales inválidas".into()))?;
 
         // Actualizar última conexión
         let now = Utc::now();
@@ -81,7 +81,7 @@ impl UsuarioService {
         let usuario = Usuario::find_by_id(id)
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Usuario no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Usuario no encontrado".into()))?;
 
         // Actualizar última conexión
         let now = Utc::now();
@@ -122,32 +122,32 @@ impl UsuarioService {
         // Validar campos obligatorios
         if nuevo_usuario.nombre.trim().is_empty() {
             return Err(AppError::BadRequest(
-                "El nombre completo es obligatorio".to_string(),
+                "El nombre completo es obligatorio".into(),
             ));
         }
 
         if nuevo_usuario.correo.trim().is_empty() {
             return Err(AppError::BadRequest(
-                "El correo electrónico es obligatorio".to_string(),
+                "El correo electrónico es obligatorio".into(),
             ));
         }
 
         // Validar formato de correo
         if !is_valid_email(&nuevo_usuario.correo) {
             return Err(AppError::BadRequest(
-                "El formato del correo electrónico no es válido".to_string(),
+                "El formato del correo electrónico no es válido".into(),
             ));
         }
 
         if nuevo_usuario.contrasena.trim().is_empty() {
             return Err(AppError::BadRequest(
-                "La contraseña es obligatoria".to_string(),
+                "La contraseña es obligatoria".into(),
             ));
         }
 
         if nuevo_usuario.contrasena.len() < 6 {
             return Err(AppError::BadRequest(
-                "La contraseña debe tener al menos 6 caracteres".to_string(),
+                "La contraseña debe tener al menos 6 caracteres".into(),
             ));
         }
 
@@ -159,7 +159,7 @@ impl UsuarioService {
 
         if existe_correo.is_some() {
             return Err(AppError::Conflict(
-                "Ya existe un usuario con este correo electrónico".to_string(),
+                "Ya existe un usuario con este correo electrónico".into(),
             ));
         }
 
@@ -173,7 +173,7 @@ impl UsuarioService {
 
                 if existe_documento.is_some() {
                     return Err(AppError::Conflict(
-                        "Ya existe un usuario con este documento".to_string(),
+                        "Ya existe un usuario con este documento".into(),
                     ));
                 }
             }
@@ -206,13 +206,13 @@ impl UsuarioService {
         let usuario = Usuario::find_by_id(id)
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Usuario no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Usuario no encontrado".into()))?;
 
         let mut usuario: usuario::ActiveModel = usuario.into();
 
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".to_string()));
+                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
             }
             usuario.nombre = Set(nombre);
         }
@@ -220,7 +220,7 @@ impl UsuarioService {
         if let Some(correo) = datos_actualizados.correo {
             if !is_valid_email(&correo) {
                 return Err(AppError::BadRequest(
-                    "El formato del correo electrónico no es válido".to_string(),
+                    "El formato del correo electrónico no es válido".into(),
                 ));
             }
             // Verificar que el nuevo correo no esté en uso por otro usuario
@@ -232,7 +232,7 @@ impl UsuarioService {
 
             if existe_correo.is_some() {
                 return Err(AppError::Conflict(
-                    "Ya existe un usuario con este correo electrónico".to_string(),
+                    "Ya existe un usuario con este correo electrónico".into(),
                 ));
             }
             usuario.correo = Set(correo);
@@ -249,7 +249,7 @@ impl UsuarioService {
 
                 if existe_documento.is_some() {
                     return Err(AppError::Conflict(
-                        "Ya existe un usuario con este documento".to_string(),
+                        "Ya existe un usuario con este documento".into(),
                     ));
                 }
             }
@@ -259,7 +259,7 @@ impl UsuarioService {
         if let Some(contrasena) = datos_actualizados.contrasena {
             if contrasena.len() < 6 {
                 return Err(AppError::BadRequest(
-                    "La contraseña debe tener al menos 6 caracteres".to_string(),
+                    "La contraseña debe tener al menos 6 caracteres".into(),
                 ));
             }
             usuario.contrasena = Set(contrasena);

@@ -23,13 +23,13 @@ impl SocketService {
     }
 
     /// Registra una nueva conexión de socket para un usuario
-    pub async fn add_connection(&self, user_id: i64, socket_id: String) {
-        tracing::info!("👤 Usuario {} conectado con socket {}", user_id, socket_id);
+    pub async fn add_connection(&self, user_id: i64, socket_id: &str) {
+        tracing::info!("Usuario {} conectado con socket {}", user_id, socket_id);
         let mut connections = self.connections.write().await;
         connections
             .entry(user_id)
             .or_insert_with(Vec::new)
-            .push(socket_id);
+            .push(socket_id.to_string());
     }
 
     /// Elimina una conexión de socket

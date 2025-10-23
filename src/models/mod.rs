@@ -51,7 +51,7 @@ impl AppState {
             format!(
                 "Database connection is not available (environment: {:?})",
                 self.config.environment
-            ),
+            ).into(),
         )
     }
 

@@ -38,7 +38,7 @@ pub async fn obtener_modulo(
     let service = ModuloService::from_ref(&state);
     match service.obtener_modulo_por_id(id).await.map_err(AppError::from)? {
         Some(modulo) => Ok(Json(modulo)),
-        None => Err(AppError::NotFound(format!("Módulo {} no encontrado", id))),
+        None => Err(AppError::NotFound(format!("Módulo {} no encontrado", id).into())),
     }
 }
 

@@ -39,15 +39,6 @@ pub struct NuevaNotificacion {
     pub datos_adicionales: Option<Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarNotificacion {
-    pub titulo: Option<String>,
-    pub mensaje: Option<String>,
-    pub tipo: Option<String>,
-    pub leida: Option<bool>,
-    pub enlace: Option<String>,
-    pub datos_adicionales: Option<Value>,
-}
 
 impl NotificacionService {
     pub fn new(db: DbExecutor) -> Self {
@@ -60,13 +51,13 @@ impl NotificacionService {
     ) -> Result<NotificacionModel, AppError> {
         // Validaciones
         if nueva_notificacion.titulo.trim().is_empty() {
-            return Err(AppError::BadRequest("El título es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El título es obligatorio".into()));
         }
         if nueva_notificacion.mensaje.trim().is_empty() {
-            return Err(AppError::BadRequest("El mensaje es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El mensaje es obligatorio".into()));
         }
         if nueva_notificacion.tipo.trim().is_empty() {
-            return Err(AppError::BadRequest("El tipo es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El tipo es obligatorio".into()));
         }
 
         // Limpiar datos adicionales
@@ -93,12 +84,6 @@ impl NotificacionService {
         Ok(notificacion_creada)
     }
 
-    pub async fn obtener_por_id(
-        &self,
-        id: i32,
-    ) -> Result<Option<NotificacionModel>, DbErr> {
-        Notificacion::find_by_id(id).one(&self.db.connection()).await
-    }
 
     pub async fn obtener_por_usuario(
         &self,
@@ -139,7 +124,7 @@ impl NotificacionService {
         let notificacion = Notificacion::find_by_id(id)
             .one(&self.db.connection())
             .await?
-            .ok_or_else(|| AppError::NotFound("Notificación no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Notificación no encontrada".into()))?;
 
         let mut notificacion: notificacion::ActiveModel = notificacion.into();
         notificacion.leida = Set(true);
@@ -177,7 +162,7 @@ impl NotificacionService {
         let notificacion = Notificacion::find_by_id(id)
             .one(&self.db.connection())
             .await?
-            .ok_or_else(|| AppError::NotFound("Notificación no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Notificación no encontrada".into()))?;
 
         notificacion.delete(&self.db.connection()).await?;
         Ok(())
@@ -212,7 +197,7 @@ impl NotificacionService {
         let notificacion = Notificacion::find_by_id(id)
             .one(&self.db.connection())
             .await?
-            .ok_or_else(|| AppError::NotFound("Notificación no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Notificación no encontrada".into()))?;
 
         let mut notificacion: notificacion::ActiveModel = notificacion.into();
         notificacion.datos_adicionales = Set(Some(datos));

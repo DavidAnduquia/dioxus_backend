@@ -27,26 +27,26 @@ impl FromRequestParts<AppState> for AuthUser {
             .headers
             .get("Authorization")
             .and_then(|header| header.to_str().ok())
-            .ok_or_else(|| AppError::Unauthorized("Missing Authorization header".to_string()))?;
+            .ok_or_else(|| AppError::Unauthorized("Missing Authorization header".into()))?;
 
         let token = auth_header
             .strip_prefix("Bearer ")
-            .ok_or_else(|| AppError::Unauthorized("Invalid Authorization header format".to_string()))?;
+            .ok_or_else(|| AppError::Unauthorized("Invalid Authorization header format".into()))?;
 
         let claims = decode::<Claims>(
             token,
             state.jwt_decoding_key.as_ref(),
             &Validation::default(),
         )
-        .map_err(|_| AppError::Unauthorized("Invalid token".to_string()))?
+        .map_err(|_| AppError::Unauthorized("Invalid token".into()))?
         .claims;
 
         let user_id = Uuid::parse_str(&claims.sub)
-            .map_err(|_| AppError::Unauthorized("Invalid user ID in token".to_string()))?;
+            .map_err(|_| AppError::Unauthorized("Invalid user ID in token".into()))?;
 
         let email = claims.email;
         if email.trim().is_empty() {
-            return Err(AppError::Unauthorized("Email claim missing in token".to_string()));
+            return Err(AppError::Unauthorized("Email claim missing in token".into()));
         }
 
         let auth_user = AuthUser {

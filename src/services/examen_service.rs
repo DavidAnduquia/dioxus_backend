@@ -54,16 +54,16 @@ impl ExamenService {
         nuevo_examen: NuevoExamen,
     ) -> Result<ExamenModel, AppError> {
         if nuevo_examen.nombre.trim().is_empty() {
-            return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El nombre es obligatorio".into()));
         }
         if nuevo_examen.fecha_inicio >= nuevo_examen.fecha_fin {
-            return Err(AppError::BadRequest("La fecha de inicio debe ser anterior a la fecha de fin".to_string()));
+            return Err(AppError::BadRequest("La fecha de inicio debe ser anterior a la fecha de fin".into()));
         }
         if nuevo_examen.duracion_minutos <= 0 {
-            return Err(AppError::BadRequest("La duración debe ser mayor a 0".to_string()));
+            return Err(AppError::BadRequest("La duración debe ser mayor a 0".into()));
         }
         if nuevo_examen.intentos_permitidos <= 0 {
-            return Err(AppError::BadRequest("Los intentos permitidos deben ser mayor a 0".to_string()));
+            return Err(AppError::BadRequest("Los intentos permitidos deben ser mayor a 0".into()));
         }
 
         let db = self.connection();
@@ -115,14 +115,14 @@ impl ExamenService {
         let examen = Examen::find_by_id(id)
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Examen no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Examen no encontrado".into()))?;
 
         let mut examen: examen::ActiveModel = examen.into();
         let ahora = Utc::now();
 
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".to_string()));
+                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
             }
             examen.nombre = Set(nombre);
         }
@@ -166,7 +166,7 @@ impl ExamenService {
         let examen = Examen::find_by_id(id)
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Examen no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Examen no encontrado".into()))?;
 
         examen.delete(&db).await?;
         Ok(())

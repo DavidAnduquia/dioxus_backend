@@ -97,7 +97,7 @@ async fn handle_socket_event(
         SocketEvent::UserConnected(user) => {
             tracing::info!("👤 Usuario conectado: {} (ID: {})", user.identificador, user.user_id);
             socket_service
-                .add_connection(user.user_id, socket_id.to_string())
+                .add_connection(user.user_id, socket_id)
                 .await;
             
             // Guardar el user_id actual
@@ -124,15 +124,15 @@ async fn handle_socket_event(
             
             // En una implementación completa, aquí se enviaría la respuesta al cliente
             let user_room = format!("user_{}", user_id);
+            let user_is_in_room = connection_info.rooms.iter().any(|r| r == &user_room);
+            
             let _response = json!({
                 "event": "notification_status",
                 "data": {
                     "user_id": user_id,
                     "connected": true,
                     "total_connections": connection_info.connected_users,
-                    "user_rooms": connection_info.rooms.iter()
-                        .filter(|room| *room == &user_room)
-                        .collect::<Vec<_>>()
+                    "user_rooms": if user_is_in_room { vec![&user_room] } else { vec![] }
                 }
             });
         }

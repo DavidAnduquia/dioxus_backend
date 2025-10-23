@@ -78,7 +78,7 @@ impl AreaConocimientoService {
         nueva_area: NuevaArea,
     ) -> Result<AreaConocimientoModel, AppError> {
         if nueva_area.nombre.trim().is_empty() {
-            return Err(AppError::BadRequest("El nombre es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El nombre es obligatorio".into()));
         }
 
         let db = self.connection();
@@ -87,7 +87,7 @@ impl AreaConocimientoService {
             id: Set(0), // Auto-increment field
             nombre: Set(nueva_area.nombre),
             descripcion: Set(nueva_area.descripcion),
-            color_etiqueta: Set(nueva_area.color_etiqueta.unwrap_or_else(|| "transparent".to_string())),
+            color_etiqueta: Set(nueva_area.color_etiqueta.unwrap_or_else(|| "transparent".into())),
             estado: Set(nueva_area.estado),
             fecha_creacion: Set(Some(ahora)),
             fecha_modificacion: Set(Some(ahora)),
@@ -106,13 +106,13 @@ impl AreaConocimientoService {
         let area = AreaConocimiento::find_by_id(id)
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Área de conocimiento no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Área de conocimiento no encontrada".into()))?;
 
         let mut area: area_conocimiento::ActiveModel = area.into();
 
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".to_string()));
+                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
             }
             area.nombre = Set(nombre);
         }
@@ -136,7 +136,7 @@ impl AreaConocimientoService {
         let area = AreaConocimiento::find_by_id(id)
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Área de conocimiento no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Área de conocimiento no encontrada".into()))?;
 
         let mut area: area_conocimiento::ActiveModel = area.into();
         area.estado = Set(estado);
@@ -151,7 +151,7 @@ impl AreaConocimientoService {
         let area = AreaConocimiento::find_by_id(id)
             .one(&db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Área de conocimiento no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Área de conocimiento no encontrada".into()))?;
         area.delete(&db).await?;
         Ok(())
     }

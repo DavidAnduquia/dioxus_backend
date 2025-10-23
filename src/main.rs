@@ -9,7 +9,6 @@ use tower_http::{
 };
 mod config;
 mod database;
-mod entities;
 mod handlers;
 mod middleware;
 mod models;

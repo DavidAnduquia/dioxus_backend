@@ -4,7 +4,7 @@ use axum::{
 };
 
 use crate::{
-    entities::rol::Model as Rol,
+    models::rol::Model as Rol,
     models::AppState,
     services::rol_service::RolService,
 };

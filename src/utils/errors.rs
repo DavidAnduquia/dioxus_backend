@@ -21,88 +21,47 @@ pub enum AppError {
     BCrypt(#[from] bcrypt::BcryptError),
 
     #[error("Bad request: {0}")]
-    BadRequest(String),
+    BadRequest(std::borrow::Cow<'static, str>),
 
     #[error("Unauthorized: {0}")]
-    Unauthorized(String),
+    Unauthorized(std::borrow::Cow<'static, str>),
 
     #[error("Forbidden: {0}")]
     #[allow(dead_code)]
-    Forbidden(String),
+    Forbidden(std::borrow::Cow<'static, str>),
 
     #[error("Not found: {0}")]
-    NotFound(String),
+    NotFound(std::borrow::Cow<'static, str>),
 
     #[error("Conflict: {0}")]
-    Conflict(String),
+    Conflict(std::borrow::Cow<'static, str>),
 
     #[error("Internal server error: {0}")]
-    InternalServerError(String),
+    InternalServerError(std::borrow::Cow<'static, str>),
 
     #[error("Database connection timeout: {0}")]
     #[allow(dead_code)]
-    DatabaseTimeout(String),
+    DatabaseTimeout(std::borrow::Cow<'static, str>),
 
     #[error("Database connection failed: {0}")]
     #[allow(dead_code)]
-    DatabaseConnectionFailed(String),
+    DatabaseConnectionFailed(std::borrow::Cow<'static, str>),
 
     #[error("Service unavailable: {0}")]
-    ServiceUnavailable(String),
+    ServiceUnavailable(std::borrow::Cow<'static, str>),
 
     #[error("SeaORM database error: {0}")]
     SeaOrm(#[from] sea_orm::DbErr),
 }
 
-// Implementaciones From<&str> para optimizar strings sin .to_string()
-impl From<&str> for AppError {
-    fn from(msg: &str) -> Self {
-        Self::BadRequest(msg.to_string())
-    }
-}
 
 // Específicas para cada variante
 impl AppError {
-    // pub fn bad_request(msg: impl Into<String>) -> Self {
-    //     Self::BadRequest(msg.into())
-    // }
-
-    // pub fn unauthorized(msg: impl Into<String>) -> Self {
-    //     Self::Unauthorized(msg.into())
-    // }
-
-    // pub fn forbidden(msg: impl Into<String>) -> Self {
-    //     Self::Forbidden(msg.into())
-    // }
-
-    // pub fn not_found(msg: impl Into<String>) -> Self {
-    //     Self::NotFound(msg.into())
-    // }
-
-    // pub fn conflict(msg: impl Into<String>) -> Self {
-    //     Self::Conflict(msg.into())
-    // }
-
-    // pub fn internal_server_error(msg: impl Into<String>) -> Self {
-    //     Self::InternalServerError(msg.into())
-    // }
-
-    // pub fn database_timeout(msg: impl Into<String>) -> Self {
-    //     Self::DatabaseTimeout(msg.into())
-    // }
-
-    // pub fn database_connection_failed(msg: impl Into<String>) -> Self {
-    //     Self::DatabaseConnectionFailed(msg.into())
-    // }
-
-    // pub fn service_unavailable(msg: impl Into<String>) -> Self {
-    //     Self::ServiceUnavailable(msg.into())
-    // }
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, message) = match self {
+                let (status, message): (StatusCode, std::borrow::Cow<'static, str>) = match self {
             AppError::Database(ref e) => {
                 tracing::error!("Database error: {:?}", e);
                 
@@ -111,27 +70,25 @@ impl IntoResponse for AppError {
                 if error_msg.contains("PoolTimedOut") || error_msg.contains("timed out") {
                     (
                         StatusCode::SERVICE_UNAVAILABLE,
-                        "Database connection timeout. Please try again later.".to_string()
+                        "Database connection timeout. Please try again later.".into()
                     )
                 } else if error_msg.contains("Connection refused") || error_msg.contains("could not connect") {
                     (
                         StatusCode::SERVICE_UNAVAILABLE,
-                        "Database is currently unavailable. Please try again later.".to_string()
+                        "Database is currently unavailable. Please try again later.".into()
                     )
                 } else {
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".into())
                 }
             }
             AppError::Validation(ref e) => {
-                let mut message = String::with_capacity(50); // Pre-allocate capacity
-                message.push_str("Validation error: ");
-                message.push_str(&e.to_string());
-                (StatusCode::BAD_REQUEST, message)
+                let message = format!("Validation error: {}", e);
+                (StatusCode::BAD_REQUEST, std::borrow::Cow::Owned(message))
             }
-            AppError::Jwt(_) => (StatusCode::UNAUTHORIZED, "Invalid token".to_string()),
+            AppError::Jwt(_) => (StatusCode::UNAUTHORIZED, "Invalid token".into()),
             AppError::BCrypt(ref e) => {
                 tracing::error!("BCrypt error: {:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".into())
             }
             AppError::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
             AppError::Unauthorized(message) => (StatusCode::UNAUTHORIZED, message),
@@ -146,14 +103,14 @@ impl IntoResponse for AppError {
                 tracing::error!("Database timeout: {}", message);
                 (
                     StatusCode::SERVICE_UNAVAILABLE,
-                    format!("Database connection timeout: {}", message)
+                    std::borrow::Cow::Owned(format!("Database connection timeout: {}", message))
                 )
             }
             AppError::DatabaseConnectionFailed(message) => {
                 tracing::error!("Database connection failed: {}", message);
                 (
                     StatusCode::SERVICE_UNAVAILABLE,
-                    format!("Database connection failed: {}", message)
+                    std::borrow::Cow::Owned(format!("Database connection failed: {}", message))
                 )
             }
             AppError::ServiceUnavailable(message) => {
@@ -162,11 +119,11 @@ impl IntoResponse for AppError {
             }
             AppError::SeaOrm(ref e) => {
                 tracing::error!("SeaORM database error: {:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
+                (StatusCode::INTERNAL_SERVER_ERROR, "Database error".into())
             }
         };
 
-        let body = Json(ApiResponse::<()>::error(message));
+                let body = Json(ApiResponse::<()>::error(message.into_owned()));
         (status, body).into_response()
     }
 }

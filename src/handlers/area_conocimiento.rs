@@ -48,7 +48,7 @@ pub async fn obtener_area(
         None => Err(AppError::NotFound(format!(
             "Área de conocimiento con id {} no encontrada",
             id
-        ))),
+        ).into())),
     }
 }
 
