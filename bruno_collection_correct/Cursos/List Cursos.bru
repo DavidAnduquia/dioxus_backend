@@ -1,0 +1,15 @@
+meta {
+  name: List Cursos
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{BASE_URL}}/api/cursos
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{JWT_TOKEN}}
+}

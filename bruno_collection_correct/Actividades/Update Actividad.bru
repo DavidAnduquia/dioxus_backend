@@ -1,0 +1,23 @@
+meta {
+  name: Update Actividad
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{BASE_URL}}/api/actividades/{{ACTIVIDAD_ID}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{JWT_TOKEN}}
+}
+
+body: json {
+  {
+    "name": "Actividad Actualizada",
+    "description": "Descripción actualizada",
+    "points": 15
+  }
+}

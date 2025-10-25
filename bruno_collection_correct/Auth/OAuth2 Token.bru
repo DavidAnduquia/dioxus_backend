@@ -1,0 +1,22 @@
+meta {
+  name: OAuth2 Token
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{BASE_URL}}/auth/token
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/x-www-form-urlencoded
+}
+
+body:form-urlencoded {
+  grant_type: password
+  username: david.anduquia@aulavirtual.com
+  password: admin123
+  scope: read write
+}

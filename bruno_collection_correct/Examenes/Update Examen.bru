@@ -1,0 +1,24 @@
+meta {
+  name: Update Examen
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{BASE_URL}}/api/examenes/{{EXAMEN_ID}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{JWT_TOKEN}}
+}
+
+body: json {
+  {
+    "name": "Examen Actualizado",
+    "description": "Descripción actualizada",
+    "duration_minutes": 90,
+    "passing_score": 75.0
+  }
+}

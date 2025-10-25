@@ -1,0 +1,42 @@
+meta {
+  name: Create Area
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{BASE_URL}}/api/areas-conocimiento
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{JWT_TOKEN}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body: json {
+  {
+    "name": "Nueva Área",
+    "description": "Descripción del área",
+    "is_active": true
+  }
+}
+
+script:post-response {
+  // Guardar automáticamente el AREA_ID del área creada
+  if (res.getStatusCode() === 200) {
+    try {
+      const responseData = res.getBody();
+      if (responseData.success && responseData.data && responseData.data.id) {
+        bru.setEnvVar("AREA_ID", responseData.data.id);
+        console.log("✅ AREA_ID guardado automáticamente:", responseData.data.id);
+      }
+    } catch (error) {
+      console.log("❌ Error guardando AREA_ID:", error);
+    }
+  }
+}

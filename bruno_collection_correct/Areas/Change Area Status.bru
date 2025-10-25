@@ -1,0 +1,21 @@
+meta {
+  name: Change Area Status
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{BASE_URL}}/api/areas-conocimiento/{{AREA_ID}}/estado
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{JWT_TOKEN}}
+}
+
+body: json {
+  {
+    "is_active": false
+  }
+}

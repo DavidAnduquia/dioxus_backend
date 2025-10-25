@@ -1,0 +1,37 @@
+meta {
+  name: Login User Alternative
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{BASE_URL}}/api/usuario/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body: json {
+  {
+    "email": "david.anduquia@aulavirtual.com",
+    "password": "admin123"
+  }
+}
+
+script:post-response {
+  // Guardar automáticamente el JWT token en la variable de entorno
+  if (res.getStatusCode() === 200) {
+    try {
+      const responseData = res.getBody();
+      if (responseData.success && responseData.data && responseData.data.token) {
+        bru.setEnvVar("JWT_TOKEN", responseData.data.token);
+        console.log("✅ JWT Token guardado automáticamente (login alternativo)");
+      }
+    } catch (error) {
+      console.log("❌ Error procesando respuesta de login alternativo:", error);
+    }
+  }
+}

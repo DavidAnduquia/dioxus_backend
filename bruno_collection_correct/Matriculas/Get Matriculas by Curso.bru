@@ -1,0 +1,15 @@
+meta {
+  name: Get Matriculas by Curso
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{BASE_URL}}/api/cursos/{{CURSO_ID}}/matriculas
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{JWT_TOKEN}}
+}
