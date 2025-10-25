@@ -13,53 +13,58 @@ pub async fn get_rol(
     Path(id): Path<i32>,
     State(state): State<AppState>,
 ) -> Result<Json<Option<Rol>>, String> {
-    let db = state.get_db().map_err(|e| e.to_string())?;
-    RolService::find_by_id(db, id)
-        .await
-        .map(Json)
-        .map_err(|e| e.to_string())
+    let db = state.db.as_ref().ok_or("DB no disponible".to_string())?;
+    let conn = db.connection();
+    let service = RolService::global(&conn);
+    let role = service.find_by_id(id).await.map_err(|e| e.to_string())?;
+    drop(conn); // Agregar esta línea para cerrar la conexión
+    Ok(Json(role))
 }
 
 pub async fn list_roles(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Rol>>, String> {
-    let db = state.get_db().map_err(|e| e.to_string())?;
-    RolService::obtener_roles(db)
-        .await
-        .map(Json)
-        .map_err(|e| e.to_string())
+    let db = state.db.as_ref().ok_or("DB no disponible".to_string())?;
+    let conn = db.connection();
+    let service = RolService::global(&conn);
+    let roles = service.obtener_roles().await.map_err(|e| e.to_string())?;
+    drop(conn); // Agregar esta línea para cerrar la conexión
+    Ok(Json(roles))
 }
 
-pub async fn create_rol(
+pub async fn create_role(
     State(state): State<AppState>,
-    Json(payload): Json<String>, // Solo nombre
+    Json(nombre): Json<String>,
 ) -> Result<Json<Rol>, String> {
-    let db = state.get_db().map_err(|e| e.to_string())?;
-    RolService::create(db, payload)
-        .await
-        .map(Json)
-        .map_err(|e| e.to_string())
+    let db = state.db.as_ref().ok_or("DB no disponible".to_string())?;
+    let conn = db.connection();
+    let service = RolService::global(&conn);
+    let new_role = service.create(nombre).await.map_err(|e| e.to_string())?;
+    drop(conn); // Agregar esta línea para cerrar la conexión
+    Ok(Json(new_role))
 }
 
-pub async fn update_rol(
+pub async fn update_role(
     Path(id): Path<i32>,
     State(state): State<AppState>,
     Json(nombre): Json<String>,
 ) -> Result<Json<Rol>, String> {
-    let db = state.get_db().map_err(|e| e.to_string())?;
-    RolService::update(db, id, nombre)
-        .await
-        .map(Json)
-        .map_err(|e| e.to_string())
+    let db = state.db.as_ref().ok_or("DB no disponible".to_string())?;
+    let conn = db.connection();
+    let service = RolService::global(&conn);
+    let updated_role = service.update(id, nombre).await.map_err(|e| e.to_string())?;
+    drop(conn); // Agregar esta línea para cerrar la conexión
+    Ok(Json(updated_role))
 }
 
-pub async fn delete_rol(
+pub async fn delete_role(
     Path(id): Path<i32>,
     State(state): State<AppState>,
 ) -> Result<Json<String>, String> {
-    let db = state.get_db().map_err(|e| e.to_string())?;
-    RolService::delete(db, id)
-        .await
-        .map(|_| Json("Rol eliminado".into()))
-        .map_err(|e| e.to_string())
+    let db = state.db.as_ref().ok_or("DB no disponible".to_string())?;
+    let conn = db.connection();
+    let service = RolService::global(&conn);
+    service.delete(id).await.map_err(|e| e.to_string())?;
+    drop(conn); // Agregar esta línea para cerrar la conexión
+    Ok(Json("Rol eliminado".into()))
 }

@@ -1,8 +1,9 @@
 use axum::{
-    extract::{FromRef, Path, State},
+    extract::{Path, State},
     Json,
 };
 use serde::Serialize;
+use std::sync::Arc;
 
 use crate::{
     models::{usuario as usuario_models, AppState, Claims},
@@ -26,9 +27,9 @@ pub struct LoginResponse {
 
 pub async fn login_usuario(
     State(state): State<AppState>,
+    State(service): State<Arc<UsuarioService>>,
     Json(payload): Json<LoginPayload>,
 ) -> Result<Json<LoginResponse>, AppError> {
-    let service = UsuarioService::from_ref(&state);
     let usuario = service
         .login_usuario(
         &payload.identificador,
@@ -68,50 +69,52 @@ fn generate_token(
 
 // POST /api/usuarios/logout/:id
 pub async fn logout_usuario(
-    State(state): State<AppState>,
+    State(service): State<Arc<UsuarioService>>,
     Path(id): Path<i32>,
 ) -> Result<Json<usuario_models::Model>, AppError> {
-    let service = UsuarioService::from_ref(&state);
     let usuario = service.logout_usuario(id).await?;
     Ok(Json(usuario))
 }
 
 // GET /api/usuarios
 pub async fn listar_usuarios(
-    State(state): State<AppState>,
+    State(service): State<Arc<UsuarioService>>,
 ) -> Result<Json<Vec<usuario_models::UsuarioConRol>>, AppError> {
-    let service = UsuarioService::from_ref(&state);
     let usuarios = service.obtener_usuarios().await?;
     Ok(Json(usuarios))
 }
 
 // POST /api/usuarios
 pub async fn crear_usuario(
-    State(state): State<AppState>,
+    State(service): State<Arc<UsuarioService>>,
     Json(payload): Json<usuario_models::NewUsuario>,
 ) -> Result<Json<usuario_models::Model>, AppError> {
-    let service = UsuarioService::from_ref(&state);
     let usuario = service.crear_usuario(payload).await?;
     Ok(Json(usuario))
 }
 
 // PUT /api/usuarios/:id
 pub async fn actualizar_usuario(
-    State(state): State<AppState>,
+    State(service): State<Arc<UsuarioService>>,
     Path(id): Path<i32>,
     Json(payload): Json<usuario_models::UpdateUsuario>,
 ) -> Result<Json<usuario_models::Model>, AppError> {
-    let service = UsuarioService::from_ref(&state);
     let usuario = service.editar_usuario(id, payload).await?;
     Ok(Json(usuario))
 }
 
 // GET /api/usuarios/:id
 pub async fn obtener_usuario_por_id(
-    State(state): State<AppState>,
-    Path(id): Path<i32>,
-) -> Result<Json<Option<usuario_models::Model>>, AppError> {
-    let service = UsuarioService::from_ref(&state);
-    let usuario = service.obtener_usuario_por_id(id).await?;
-    Ok(Json(usuario))
+    Path(_id): Path<i32>,
+    State(_service): State<Arc<UsuarioService>>,
+) -> Result<Json<Option<usuario_models::Model>>, String> {
+    Ok(Json(None))
+}
+
+// GET /api/usuarios/:id
+pub async fn get_usuario(
+    Path(_id): Path<i32>,
+    State(_service): State<Arc<UsuarioService>>,
+) -> Result<Json<Option<usuario_models::Model>>, String> {
+    Ok(Json(None))
 }

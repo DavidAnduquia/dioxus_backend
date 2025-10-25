@@ -45,10 +45,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // Run migrations
-    // if let Some(ref pool) = db_pool {
-    //     database::seeder::run_migrations(pool).await?;
-    // }
     // Create application state
     let db_executor = db_pool.map(DbExecutor::from_pool);
 
@@ -62,6 +58,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         jwt_encoding_key,
         jwt_decoding_key,
     };
+
+    // Medición definitiva de Arc
+    let arc_size = std::mem::size_of::<Arc<Config>>();
+    let inner_size = std::mem::size_of_val(app_state.config.as_ref());
+    tracing::info!(
+        "🔍 Medición definitiva: Arc: {} bytes, Datos: {} bytes",
+        arc_size,
+        inner_size
+    );
 
     // Build our application with routes and middleware
     let app = create_app()

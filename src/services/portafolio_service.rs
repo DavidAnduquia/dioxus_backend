@@ -1,20 +1,18 @@
-use async_trait::async_trait;
+// use async_trait::async_trait;  // Ahora disponible por Cargo.toml
+use sea_orm_migration::async_trait;
 use chrono::Utc;
+use once_cell::sync::OnceCell;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
     QuerySelect, Set,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::{
     models::portafolio::{self, Entity as Portafolio, Model as PortafolioModel},
     utils::errors::AppError,
 };
-
-#[derive(Debug, Clone)]
-pub struct PortafolioService {
-    db: DatabaseConnection,
-}
 
 // Estructura para crear un nuevo portafolio
 #[derive(Debug, Deserialize, Serialize)]
@@ -34,9 +32,20 @@ pub struct ActualizarPortafolio {
     pub estado: Option<String>,
 }
 
+// Singleton compartido optimizado
+static PORTAFOLIO_SERVICE: OnceCell<Arc<PortafolioService>> = OnceCell::new();
+
+#[derive(Debug, Clone)]
+pub struct PortafolioService {
+    db: DatabaseConnection,
+}
+
 impl PortafolioService {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    /// Obtiene la instancia global del servicio, inicializándola si es necesario
+    pub fn global(db: &DatabaseConnection) -> &'static Arc<Self> {
+        PORTAFOLIO_SERVICE.get_or_init(|| {
+            Arc::new(Self { db: db.clone() })
+        })
     }
 
     // Crear un nuevo portafolio
@@ -162,6 +171,7 @@ impl PortafolioService {
     }
 }
 
+/*
 #[async_trait]
 impl crate::traits::service::CrudService<PortafolioModel> for PortafolioService {
     async fn get_all(&self) -> Result<Vec<PortafolioModel>, AppError> {

@@ -1,69 +1,63 @@
-use crate::models::rol::Model;
-use sqlx::PgPool;
+use once_cell::sync::OnceCell;
+use sea_orm::{DatabaseConnection, EntityTrait, DbErr, ActiveModelTrait, Set};
+use sea_orm::ModelTrait;
+use std::sync::Arc;
 
-pub struct RolService;
+use crate::models::rol::{Entity as RolEntity, Model as RolModel, ActiveModel as RolActiveModel};
+
+static ROL_SERVICE: OnceCell<Arc<RolService>> = OnceCell::new();
+
+#[derive(Debug, Clone)]
+pub struct RolService {
+    conn: DatabaseConnection,
+}
 
 impl RolService {
-    pub async fn find_by_id(
-        pool: &PgPool,
-        id: i32
-    ) -> Result<Option<Model>, sqlx::Error> {
-        sqlx::query_as::<_, Model>(
-            "SELECT id, nombre FROM rustdema.roles WHERE id = $1"
-        )
-        .bind(id)
-        .fetch_optional(pool)
-        .await
+    /// Obtiene la instancia global del servicio, inicializándola si es necesario
+    pub fn global(conn: &DatabaseConnection) -> &'static Arc<Self> {
+        ROL_SERVICE.get_or_init(|| {
+            Arc::new(Self { conn: conn.clone() })
+        })
     }
 
- 
-    pub async fn obtener_roles(
-        pool: &PgPool
-    ) -> Result<Vec<Model>, sqlx::Error> {
-        sqlx::query_as::<_, Model>(
-            "SELECT id, nombre FROM rustdema.roles ORDER BY id"
-        )
-        .fetch_all(pool)
-        .await
+    pub async fn find_by_id(&self, id: i32) -> Result<Option<RolModel>, DbErr> {
+        RolEntity::find_by_id(id)
+            .one(&self.conn)
+            .await
     }
 
-    pub async fn create(
-        pool: &PgPool,
-        nombre: String
-    ) -> Result<Model, sqlx::Error> {
-        sqlx::query_as::<_, Model>(
-            "INSERT INTO rustdema.roles (nombre) VALUES ($1) RETURNING id, nombre"
-        )
-        .bind(nombre)
-        .fetch_one(pool)
-        .await
+    pub async fn obtener_roles(&self) -> Result<Vec<RolModel>, DbErr> {
+        RolEntity::find()
+            .all(&self.conn)
+            .await
     }
 
-    pub async fn update(
-        pool: &PgPool,
-        id: i32,
-        nombre: String
-    ) -> Result<Model, sqlx::Error> {
-        sqlx::query_as::<_, Model>(
-            "UPDATE rustdema.roles SET nombre = $1 WHERE id = $2 RETURNING id, nombre"
-        )
-        .bind(nombre)
-        .bind(id)
-        .fetch_one(pool)
-        .await
+    pub async fn create(&self, nombre: String) -> Result<RolModel, DbErr> {
+        let new_rol = RolActiveModel {
+            nombre: Set(nombre),
+            ..Default::default()
+        };
+        new_rol.insert(&self.conn).await
     }
 
-    pub async fn delete(
-        pool: &PgPool,
-        id: i32
-    ) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query(
-            "DELETE FROM rustdema.roles WHERE id = $1"
-        )
-        .bind(id)
-        .execute(pool)
-        .await?;
-        
-        Ok(result.rows_affected())
+    pub async fn update(&self, id: i32, nombre: String) -> Result<RolModel, DbErr> {
+        let rol = RolEntity::find_by_id(id)
+            .one(&self.conn)
+            .await?
+            .ok_or(DbErr::RecordNotFound("Rol no encontrado".into()))?;
+
+        let mut rol: RolActiveModel = rol.into();
+        rol.nombre = Set(nombre);
+        rol.update(&self.conn).await
+    }
+
+    pub async fn delete(&self, id: i32) -> Result<u64, DbErr> {
+        let rol = RolEntity::find_by_id(id)
+            .one(&self.conn)
+            .await?
+            .ok_or(DbErr::RecordNotFound("Rol no encontrado".into()))?;
+
+        rol.delete(&self.conn).await?;
+        Ok(1)  // Asumiendo que siempre se elimina 1 registro
     }
 }

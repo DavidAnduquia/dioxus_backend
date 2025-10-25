@@ -5,12 +5,13 @@ use sea_orm::{
     Set, IntoActiveModel,
 };
 use tracing::instrument;
+use once_cell::sync::OnceCell;
+use std::sync::Arc;
 
 use crate::{
-    database::DbExecutor,
     models::{
-        rol,
         usuario::{self, Entity as Usuario, Model as UsuarioModel, NewUsuario, UpdateUsuario},
+        rol,
         AppState,
     },
     utils::errors::AppError,
@@ -24,20 +25,24 @@ fn is_valid_email(email: &str) -> bool {
     !local.is_empty() && domain.contains('.') && !domain.starts_with('.') && !domain.ends_with('.')
 }
 
+static USUARIO_SERVICE: OnceCell<Arc<UsuarioService>> = OnceCell::new();
+
 #[derive(Debug, Clone)]
 pub struct UsuarioService {
-    db: DbExecutor,
+    db: DatabaseConnection,
 }
 
 impl UsuarioService {
-    pub fn new(db: DbExecutor) -> Self {
-        Self { db }
+    /// Obtiene la instancia global del servicio, inicializándola si es necesario
+    pub fn global(conn: &DatabaseConnection) -> &'static Arc<Self> {
+        USUARIO_SERVICE.get_or_init(|| {
+            Arc::new(Self { db: conn.clone() })
+        })
     }
-
 
     /// Obtiene una conexión del pool de manera eficiente
     async fn get_connection(&self) -> DatabaseConnection {
-        self.db.connection()
+        self.db.clone()
     }
     
     // No necesitamos el método begin_transaction separado ya que usamos begin() directamente
@@ -290,9 +295,10 @@ impl UsuarioService {
     }
 }
 
-impl FromRef<AppState> for UsuarioService {
+impl FromRef<AppState> for Arc<UsuarioService> {
     fn from_ref(app_state: &AppState) -> Self {
-        let executor = app_state.db.clone().expect("Database connection is not available");
-        UsuarioService::new(executor)
+        let db = app_state.db.as_ref().expect("DB no disponible");
+        let conn = db.connection();
+        UsuarioService::global(&conn).clone()
     }
 }

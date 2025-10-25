@@ -3,9 +3,13 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
 };
 use chrono::Utc;
+use once_cell::sync::OnceCell;
+use std::sync::Arc;
 
 use crate::models::profesor_curso::{self, Entity as ProfesorCurso, Model as ProfesorCursoModel};
 use crate::utils::errors::AppError;
+
+static PROFESOR_CURSO_SERVICE: OnceCell<Arc<ProfesorCursoService>> = OnceCell::new();
 
 #[derive(Debug, Clone)]
 pub struct ProfesorCursoService {
@@ -13,8 +17,11 @@ pub struct ProfesorCursoService {
 }
 
 impl ProfesorCursoService {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    /// Obtiene la instancia global del servicio, inicializándola si es necesario
+    pub fn global(conn: &DatabaseConnection) -> &'static Arc<Self> {
+        PROFESOR_CURSO_SERVICE.get_or_init(|| {
+            Arc::new(Self { db: conn.clone() })
+        })
     }
 
     // Obtener todas las asignaciones de profesores a cursos
