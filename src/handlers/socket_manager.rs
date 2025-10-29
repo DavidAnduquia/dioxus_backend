@@ -18,7 +18,7 @@ use crate::services::socket_service::get_socket_service;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectedUser {
     pub identificador: String,
-    pub user_id: i64,
+    pub user_id: i32,  // Cambiado de i64 a i32 para consistencia
     pub nombre: Option<String>,
 }
 
@@ -30,11 +30,13 @@ pub enum SocketEvent {
     #[serde(rename = "user_connected")]
     UserConnected(ConnectedUser),
     #[serde(rename = "join_notifications")]
-    JoinNotifications { user_id: i64 },
+    JoinNotifications { user_id: i32 },
     #[serde(rename = "leave_notifications")]
-    LeaveNotifications { user_id: i64 },
+    LeaveNotifications { user_id: i32 },
     #[serde(rename = "get_notification_status")]
-    GetNotificationStatus { user_id: i64 },
+    GetNotificationStatus { user_id: i32 },
+    #[serde(rename = "solicitar_usuarios_conectados")]
+    SolicitarUsuariosConectados,
 }
 
 /// Manejador principal de WebSocket
@@ -55,7 +57,7 @@ async fn handle_socket(mut socket: WebSocket) {
     let socket_service = get_socket_service();
     
     // Estado local para rastrear el usuario conectado
-    let current_user: Arc<RwLock<Option<i64>>> = Arc::new(RwLock::new(None));
+    let current_user: Arc<RwLock<Option<i32>>> = Arc::new(RwLock::new(None));
 
     // Procesar mensajes del cliente
     while let Some(Ok(msg)) = socket.recv().await {
@@ -79,7 +81,7 @@ async fn handle_socket(mut socket: WebSocket) {
 
     // Limpiar la conexión
     if let Some(user_id) = *current_user.read().await {
-        socket_service.remove_connection(user_id, &socket_id).await;
+        socket_service.remove_connection(user_id as i64, &socket_id).await;
     }
     
     tracing::info!("🔌 Cliente desconectado: {}", socket_id);
@@ -91,13 +93,13 @@ async fn handle_socket_event(
     event: SocketEvent,
     socket_service: &crate::services::socket_service::SocketService,
     socket_id: &str,
-    current_user: &Arc<RwLock<Option<i64>>>,
+    current_user: &Arc<RwLock<Option<i32>>>,
 ) {
     match event {
         SocketEvent::UserConnected(user) => {
             tracing::info!("👤 Usuario conectado: {} (ID: {})", user.identificador, user.user_id);
             socket_service
-                .add_connection(user.user_id, socket_id)
+                .add_connection(user.user_id as i64, socket_id)
                 .await;
             
             // Guardar el user_id actual
@@ -133,6 +135,23 @@ async fn handle_socket_event(
                     "connected": true,
                     "total_connections": connection_info.connected_users,
                     "user_rooms": if user_is_in_room { vec![&user_room] } else { vec![] }
+                }
+            });
+        }
+        SocketEvent::SolicitarUsuariosConectados => {
+            let connection_info = socket_service.get_connection_info().await;
+            tracing::info!(
+                "📊 Solicitud de usuarios conectados: {} usuarios activos",
+                connection_info.connected_users
+            );
+            
+            // En una implementación completa, aquí se enviaría la lista de usuarios conectados
+            let _response = json!({
+                "event": "usuarios_conectados",
+                "data": {
+                    "total_usuarios": connection_info.connected_users,
+                    "total_rooms": connection_info.rooms.len(),
+                    "timestamp": chrono::Utc::now().timestamp()
                 }
             });
         }

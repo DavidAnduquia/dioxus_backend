@@ -1,23 +1,23 @@
 meta {
   name: Update Role
   type: http
-  seq: 4
+  seq: 9
 }
 
 put {
-  url: {{BASE_URL}}/api/roles/{{ROLE_ID}}
+  url: {{BASE_URL}}/api/roles/5
   body: json
   auth: bearer
+}
+
+headers {
+  Content-Type: application/json
 }
 
 auth:bearer {
   token: {{JWT_TOKEN}}
 }
 
-body: json {
-  {
-    "name": "Rol Actualizado",
-    "description": "Descripción actualizada",
-    "permissions": ["read", "write", "admin"]
-  }
+body:json {
+  "Super Admin"
 }

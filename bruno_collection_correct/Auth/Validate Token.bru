@@ -1,0 +1,47 @@
+meta {
+  name: Validate Token
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL}}/auth/validate-token
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyI…2MTF9.x3m-cwh_X1D0Eb6MY_XJzmXvKX_21ryrSmB702xq1Js"
+  }
+}
+
+script:post-response {
+  try {
+    // Procesar respuesta de validación de token
+    if (res.status === 200) {
+      const responseData = res.body;
+      if (responseData && responseData.success && responseData.data) {
+        const tokenData = responseData.data;
+        console.log("✅ Token válido");
+        console.log("👤 Usuario ID:", tokenData.user_id);
+        console.log("📧 Email:", tokenData.email);
+        console.log("⏰ Expira en:", tokenData.time_until_expiry, "segundos");
+        console.log("📅 Emitido:", new Date(tokenData.issued_at * 1000).toLocaleString());
+        console.log("⌛ Expira:", new Date(tokenData.expires_at * 1000).toLocaleString());
+      } else {
+        console.log("❌ Respuesta del servidor inválida:", responseData);
+      }
+    } else {
+      console.log("❌ Token inválido o expirado - Status:", res.status);
+      console.log("Response:", res.body);
+    }
+  } catch (error) {
+    console.log("❌ Error procesando respuesta:", error.message);
+    console.log("Raw response:", res.body);
+  }
+}

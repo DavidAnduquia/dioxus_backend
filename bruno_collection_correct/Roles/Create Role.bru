@@ -10,33 +10,33 @@ post {
   auth: bearer
 }
 
-auth:bearer {
-  token: {{JWT_TOKEN}}
-}
-
 headers {
   Content-Type: application/json
 }
 
-body: json {
-  {
-    "name": "Nuevo Rol",
-    "description": "Descripción del rol",
-    "permissions": ["read", "write"]
-  }
+auth:bearer {
+  token: {{JWT_TOKEN}}
+}
+
+body:json {
+  "Super Administrador"
 }
 
 script:post-response {
   // Guardar automáticamente el ROLE_ID del rol creado
-  if (res.getStatusCode() === 200) {
+  if (res.status === 200) {
     try {
-      const responseData = res.getBody();
-      if (responseData.success && responseData.data && responseData.data.id) {
-        bru.setEnvVar("ROLE_ID", responseData.data.id);
-        console.log("✅ ROLE_ID guardado automáticamente:", responseData.data.id);
+      const responseData = res.body;
+      if (responseData && responseData.id) {
+        bru.setEnvVar("ROLE_ID", responseData.id);
+        console.log("✅ ROLE_ID guardado automáticamente:", responseData.id);
+      } else {
+        console.log("❌ Respuesta no contiene ID:", responseData);
       }
     } catch (error) {
       console.log("❌ Error guardando ROLE_ID:", error);
     }
+  } else {
+    console.log("❌ Error creando rol - Status:", res.status);
   }
 }

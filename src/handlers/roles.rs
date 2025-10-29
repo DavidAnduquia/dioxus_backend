@@ -4,12 +4,14 @@ use axum::{
 };
 
 use crate::{
+    middleware::auth::AuthUser,
     models::rol::Model as Rol,
     models::AppState,
     services::rol_service::RolService,
 };
 
 pub async fn get_rol(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     Path(id): Path<i32>,
     State(state): State<AppState>,
 ) -> Result<Json<Option<Rol>>, String> {
@@ -22,6 +24,7 @@ pub async fn get_rol(
 }
 
 pub async fn list_roles(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Rol>>, String> {
     let db = state.db.as_ref().ok_or("DB no disponible".to_string())?;
@@ -33,6 +36,7 @@ pub async fn list_roles(
 }
 
 pub async fn create_role(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(nombre): Json<String>,
 ) -> Result<Json<Rol>, String> {
@@ -45,6 +49,7 @@ pub async fn create_role(
 }
 
 pub async fn update_role(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     Path(id): Path<i32>,
     State(state): State<AppState>,
     Json(nombre): Json<String>,
@@ -58,6 +63,7 @@ pub async fn update_role(
 }
 
 pub async fn delete_role(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     Path(id): Path<i32>,
     State(state): State<AppState>,
 ) -> Result<Json<String>, String> {

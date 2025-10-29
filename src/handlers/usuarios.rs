@@ -6,6 +6,7 @@ use serde::Serialize;
 use std::sync::Arc;
 
 use crate::{
+    middleware::auth::AuthUser,
     models::{usuario as usuario_models, AppState, Claims},
     services::usuario_service::UsuarioService,
     utils::errors::AppError,
@@ -78,6 +79,7 @@ pub async fn logout_usuario(
 
 // GET /api/usuarios
 pub async fn listar_usuarios(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(service): State<Arc<UsuarioService>>,
 ) -> Result<Json<Vec<usuario_models::UsuarioConRol>>, AppError> {
     let usuarios = service.obtener_usuarios().await?;
@@ -86,6 +88,7 @@ pub async fn listar_usuarios(
 
 // POST /api/usuarios
 pub async fn crear_usuario(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(service): State<Arc<UsuarioService>>,
     Json(payload): Json<usuario_models::NewUsuario>,
 ) -> Result<Json<usuario_models::Model>, AppError> {
@@ -95,8 +98,9 @@ pub async fn crear_usuario(
 
 // PUT /api/usuarios/:id
 pub async fn actualizar_usuario(
-    State(service): State<Arc<UsuarioService>>,
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     Path(id): Path<i32>,
+    State(service): State<Arc<UsuarioService>>,
     Json(payload): Json<usuario_models::UpdateUsuario>,
 ) -> Result<Json<usuario_models::Model>, AppError> {
     let usuario = service.editar_usuario(id, payload).await?;
@@ -105,10 +109,12 @@ pub async fn actualizar_usuario(
 
 // GET /api/usuarios/:id
 pub async fn obtener_usuario_por_id(
-    Path(_id): Path<i32>,
-    State(_service): State<Arc<UsuarioService>>,
-) -> Result<Json<Option<usuario_models::Model>>, String> {
-    Ok(Json(None))
+    _auth_user: AuthUser,  // Validar JWT automáticamente
+    Path(id): Path<i32>,
+    State(service): State<Arc<UsuarioService>>,
+) -> Result<Json<Option<usuario_models::Model>>, AppError> {
+    let usuario = service.obtener_usuario_por_id(id).await?;
+    Ok(Json(usuario))
 }
 
 // GET /api/usuarios/:id

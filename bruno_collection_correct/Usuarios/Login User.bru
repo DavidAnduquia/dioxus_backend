@@ -10,20 +10,16 @@ post {
   auth: none
 }
 
-headers {
-  Content-Type: application/json
-}
-
-body: json {
+body:json {
   {
     "email": "david.anduquia@aulavirtual.com",
-    "password": "admin123"
+    "password": "$2b$12$8K1p8nKvqZ6VzH3FpKdDuOXdGzKdIQZw4QX7qkzLkTbGdVeJc6fO"
   }
 }
 
 script:post-response {
-  // Guardar automáticamente el JWT token en la variable de entorno
-  if (res.getStatusCode() === 200) {
+  // Guardar automáticamente el JWT token después del login
+  if (res.success === 200) {
     try {
       const responseData = res.getBody();
       if (responseData.success && responseData.data && responseData.data.token) {
@@ -31,7 +27,7 @@ script:post-response {
         console.log("✅ JWT Token guardado automáticamente");
       }
     } catch (error) {
-      console.log("❌ Error procesando respuesta de login:", error);
+      console.log("❌ Error procesando respuesta:", error);
     }
   }
 }

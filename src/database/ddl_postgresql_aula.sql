@@ -320,3 +320,24 @@ INSERT INTO cursos (
     ('Álgebra Básica', 'Fundamentos de álgebra para educación media', '2025-02-01', '2025-06-30', NULL, 1, 5, '2025-1', 2025, 1),
     ('Física Mecánica', 'Introducción a la física mecánica clásica', '2025-02-01', '2025-06-30', 'Álgebra Básica', 1, 6, '2025-1', 2025, 2)
 ON CONFLICT DO NOTHING;
+
+-- Tabla de notificaciones
+CREATE TABLE notificaciones (
+    id SERIAL PRIMARY KEY,
+    usuario_id BIGINT NOT NULL,
+    titulo VARCHAR(255) NOT NULL,
+    mensaje TEXT NOT NULL,
+    tipo VARCHAR(50) NOT NULL,
+    leida BOOLEAN DEFAULT false,
+    enlace VARCHAR(500),
+    datos_adicionales JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Crear índices para notificaciones
+CREATE INDEX idx_notificaciones_usuario_id ON notificaciones(usuario_id);
+CREATE INDEX idx_notificaciones_tipo ON notificaciones(tipo);
+CREATE INDEX idx_notificaciones_leida ON notificaciones(leida);
+
+-- Insertar datos de ejemplo para notificaciones

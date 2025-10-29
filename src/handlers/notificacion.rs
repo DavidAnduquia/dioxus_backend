@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::{
+    middleware::auth::AuthUser,
     models::AppState,
     services::notificacion_service::{NotificacionService, NuevaNotificacion},
     utils::errors::AppError,
@@ -43,6 +44,7 @@ fn serialize_notificacion(n: &crate::models::notificacion::Model) -> Value {
 
 /// Obtener notificaciones de un usuario
 pub async fn obtener_notificaciones_usuario(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(usuario_id): Path<i64>,
     Query(params): Query<NotificacionesQuery>,
@@ -66,6 +68,7 @@ pub async fn obtener_notificaciones_usuario(
 
 /// Marcar notificación como leída
 pub async fn marcar_notificacion_leida(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<Value>, AppError> {
@@ -78,6 +81,7 @@ pub async fn marcar_notificacion_leida(
 
 /// Crear nueva notificación
 pub async fn crear_notificacion(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<NuevaNotificacion>,
 ) -> Result<(StatusCode, Json<Value>), AppError> {
@@ -93,6 +97,7 @@ pub async fn crear_notificacion(
 
 /// Marcar todas las notificaciones de un usuario como leídas
 pub async fn marcar_todas_leidas(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(usuario_id): Path<i64>,
 ) -> Result<Json<Value>, AppError> {

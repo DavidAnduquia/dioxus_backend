@@ -6,6 +6,7 @@ use axum::{
 use serde::Deserialize;
 
 use crate::{
+    middleware::auth::AuthUser,
     models::AppState,
     services::matricula_service::MatriculaService,
     utils::errors::AppError,
@@ -18,6 +19,7 @@ pub struct MatriculaPayload {
 }
 
 pub async fn matricular_estudiante(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<MatriculaPayload>,
 ) -> Result<(StatusCode, Json<crate::models::historial_curso_estudiante::Model>), AppError> {
@@ -29,6 +31,7 @@ pub async fn matricular_estudiante(
 }
 
 pub async fn desmatricular_estudiante(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path((estudiante_id, curso_id)): Path<(i32, i32)>,
 ) -> Result<Json<crate::models::historial_curso_estudiante::Model>, AppError> {
@@ -40,6 +43,7 @@ pub async fn desmatricular_estudiante(
 }
 
 pub async fn obtener_matriculas_estudiante(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(estudiante_id): Path<i32>,
 ) -> Result<Json<Vec<crate::models::historial_curso_estudiante::Model>>, AppError> {
@@ -51,6 +55,7 @@ pub async fn obtener_matriculas_estudiante(
 }
 
 pub async fn obtener_matriculas_curso(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(curso_id): Path<i32>,
 ) -> Result<Json<Vec<crate::models::historial_curso_estudiante::Model>>, AppError> {

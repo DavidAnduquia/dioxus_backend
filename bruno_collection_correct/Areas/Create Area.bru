@@ -10,33 +10,39 @@ post {
   auth: bearer
 }
 
-auth:bearer {
-  token: {{JWT_TOKEN}}
-}
-
 headers {
   Content-Type: application/json
 }
 
-body: json {
+auth:bearer {
+  token: {{JWT_TOKEN}}
+}
+
+body:json {
   {
-    "name": "Nueva Área",
-    "description": "Descripción del área",
-    "is_active": true
+    "nombre": "Área de Prueba",
+    "descripcion": "Descripción del área creada desde Bruno",
+    "estado": true
   }
 }
 
 script:post-response {
   // Guardar automáticamente el AREA_ID del área creada
-  if (res.getStatusCode() === 200) {
+  if (res.status === 201) {
     try {
-      const responseData = res.getBody();
-      if (responseData.success && responseData.data && responseData.data.id) {
-        bru.setEnvVar("AREA_ID", responseData.data.id);
-        console.log("✅ AREA_ID guardado automáticamente:", responseData.data.id);
+      const responseData = res.body;
+      if (responseData && responseData.id) {
+        bru.setEnvVar("AREA_ID", responseData.id);
+        console.log("✅ AREA_ID guardado automáticamente:", responseData.id);
+        console.log("✅ Nombre del área:", responseData.nombre);
+      } else {
+        console.log("❌ Respuesta no contiene ID:", responseData);
       }
     } catch (error) {
       console.log("❌ Error guardando AREA_ID:", error);
     }
+  } else {
+    console.log("❌ Error creando área - Status:", res.status);
+    console.log("Response:", res.body);
   }
 }

@@ -11,12 +11,37 @@ post {
 }
 
 headers {
-  Content-Type: application/x-www-form-urlencoded
+  Content-Type: application/json
 }
 
-body:form-urlencoded {
-  grant_type: password
-  username: david.anduquia@aulavirtual.com
-  password: admin123
-  scope: read write
+body:json {
+  {
+    "grant_type": "password",
+    "email": "test@example.com",
+    "password": "admin123",
+    "scope": "read write"
+  }
+}
+
+script:post-response {
+  // Guardar automáticamente el JWT token en la variable de entorno
+  if (res.status === 200) {
+    try {
+      const responseData = res.body;
+      console.log("📥 Respuesta OAuth2:", JSON.stringify(responseData, null, 2));
+
+      if (responseData.access_token) {
+        const accessToken = responseData.access_token;
+        bru.setEnvVar("JWT_TOKEN", accessToken);
+        console.log("✅ JWT Token OAuth2 guardado automáticamente");
+      } else {
+        console.log("❌ No se encontró access_token en respuesta OAuth2:", responseData);
+      }
+    } catch (error) {
+      console.log("❌ Error procesando respuesta OAuth2:", error);
+    }
+  } else {
+    console.log("❌ OAuth2 fallido - Status:", res.status);
+    console.log("Response:", res.body);
+  }
 }

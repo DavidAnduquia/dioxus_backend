@@ -5,12 +5,14 @@ use axum::{
 };
 
 use crate::{
+    middleware::auth::AuthUser,
     models::{modulo::Model as ModuloModel, AppState},
     services::modulo_service::{ActualizarModulo, ModuloService, NuevoModulo},
     utils::errors::AppError,
 };
 
 pub async fn crear_modulo(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<NuevoModulo>,
 ) -> Result<(StatusCode, Json<ModuloModel>), AppError> {
@@ -20,6 +22,7 @@ pub async fn crear_modulo(
 }
 
 pub async fn listar_modulos_por_curso(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(curso_id): Path<i32>,
 ) -> Result<Json<Vec<ModuloModel>>, AppError> {
@@ -32,6 +35,7 @@ pub async fn listar_modulos_por_curso(
 }
 
 pub async fn obtener_modulo(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<ModuloModel>, AppError> {
@@ -43,6 +47,7 @@ pub async fn obtener_modulo(
 }
 
 pub async fn actualizar_modulo(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<ActualizarModulo>,
@@ -53,6 +58,7 @@ pub async fn actualizar_modulo(
 }
 
 pub async fn eliminar_modulo(
+    _auth_user: AuthUser,  // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<StatusCode, AppError> {

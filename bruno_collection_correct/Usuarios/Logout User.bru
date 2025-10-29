@@ -16,9 +16,8 @@ auth:bearer {
 
 script:post-response {
   // Limpiar automáticamente el JWT token después del logout
-  if (res.getStatusCode() === 200) {
+  if (res.estado === 200) {
     bru.setEnvVar("JWT_TOKEN", "");
     console.log("✅ JWT Token limpiado automáticamente");
   }
 }
-

@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
 use utoipa::ToSchema;
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::{config::Config, database::DbExecutor};
@@ -68,7 +67,7 @@ impl AppState {
 // User models
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
 pub struct User {
-    pub id: Uuid,
+    pub id: i32,  // Cambiado de Uuid a i32 para coincidir con BD
     pub email: String,
     #[serde(skip_serializing)]
     pub password_hash: String,
@@ -102,8 +101,8 @@ pub struct AuthResponse {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
-    #[schema(value_type = String, format = "uuid")]
-    pub id: Uuid,
+    #[schema(value_type = i32)]
+    pub id: i32,  // Cambiado de Uuid a i32
     pub email: String,
     pub name: String,
     #[schema(value_type = String, format = "date-time")]

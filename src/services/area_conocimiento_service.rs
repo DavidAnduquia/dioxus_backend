@@ -83,14 +83,16 @@ impl AreaConocimientoService {
 
         let db = self.connection();
         let ahora = Utc::now();
+
+        // ✅ Nombres pueden repetirse - el ID es el identificador único
         let area = area_conocimiento::ActiveModel {
-            id: Set(0), // Auto-increment field
             nombre: Set(nueva_area.nombre),
             descripcion: Set(nueva_area.descripcion),
             color_etiqueta: Set(nueva_area.color_etiqueta.unwrap_or_else(|| "transparent".into())),
             estado: Set(nueva_area.estado),
             fecha_creacion: Set(Some(ahora)),
             fecha_modificacion: Set(Some(ahora)),
+            ..Default::default()
         };
 
         let area_creada = area.insert(&db).await?;

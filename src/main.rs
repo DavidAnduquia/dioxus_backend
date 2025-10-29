@@ -21,6 +21,7 @@ use database::DbExecutor;
 use routes::create_app;
 
 #[tokio::main(worker_threads = 2)]
+//use std::io;
 //#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Inicializar logger con persistencia en archivos (zona horaria Bogotá UTC-5)
@@ -78,8 +79,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .layer(TraceLayer::new_for_http())
                 // CORS permisivo (ajustar en producción)
                 .layer(CorsLayer::permissive())
-                // Autenticación JWT
-                .layer(middleware::auth::auth_layer())
         )
         // Métricas de performance (solo requests lentos)
         .layer(axum::middleware::from_fn(middleware::memory::performance_metrics))
