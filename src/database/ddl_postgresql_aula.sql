@@ -218,11 +218,125 @@ CREATE TABLE modulos (
     curso_id INTEGER REFERENCES cursos(id) ON DELETE CASCADE,
     nombre VARCHAR(200) NOT NULL,
     descripcion TEXT,
+    orden INTEGER NOT NULL DEFAULT 0,
+    tipo VARCHAR(50) NOT NULL DEFAULT 'estructura_contenido', -- 'estructura_contenido', 'taller', 'evaluacion', etc.
+    visible BOOLEAN NOT NULL DEFAULT true,
+    fecha_inicio TIMESTAMPTZ,
+    fecha_fin TIMESTAMPTZ,
+    duracion_estimada INTEGER, -- en minutos
+    obligatorio BOOLEAN NOT NULL DEFAULT true,
     fecha_creacion TIMESTAMPTZ DEFAULT NOW(),
     fecha_modificacion TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabla de personalización de examen
+-- Tabla de temas (dentro de módulos)
+CREATE TABLE temas (
+    id SERIAL PRIMARY KEY,
+    modulo_id INTEGER REFERENCES modulos(id) ON DELETE CASCADE,
+    nombre VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    orden INTEGER NOT NULL DEFAULT 0,
+    visible BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabla de unidades (dentro de temas)
+CREATE TABLE unidades (
+    id SERIAL PRIMARY KEY,
+    tema_id INTEGER REFERENCES temas(id) ON DELETE CASCADE,
+    nombre VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    orden INTEGER NOT NULL DEFAULT 0,
+    visible BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabla de actividades de entrega (dentro de unidades)
+CREATE TABLE actividades_entrega (
+    id SERIAL PRIMARY KEY,
+    unidad_id INTEGER REFERENCES unidades(id) ON DELETE CASCADE,
+    nombre VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    fecha_limite TIMESTAMPTZ NOT NULL,
+    tipo_actividad VARCHAR(50) NOT NULL CHECK (tipo_actividad IN ('entrega_obligatoria', 'entrega_opcional')),
+    activo BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabla de entregas de estudiantes
+CREATE TABLE entregas (
+    id SERIAL PRIMARY KEY,
+    actividad_entrega_id INTEGER REFERENCES actividades_entrega(id) ON DELETE CASCADE,
+    estudiante_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+    documento_nombre VARCHAR(255) NOT NULL,
+    documento_tipo VARCHAR(100) NOT NULL,
+    documento_tamanio BIGINT NOT NULL,
+    documento_url TEXT NOT NULL,
+    fecha_entrega TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    calificacion REAL,
+    comentario_profesor TEXT,
+    fecha_calificacion TIMESTAMPTZ,
+    estado VARCHAR(50) NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'calificado', 'rechazado')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabla de webinars (aprendizaje interactivo)
+CREATE TABLE webinars (
+    id SERIAL PRIMARY KEY,
+    curso_id INTEGER REFERENCES cursos(id) ON DELETE CASCADE,
+    titulo VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    progreso INTEGER NOT NULL DEFAULT 0 CHECK (progreso >= 0 AND progreso <= 100),
+    estado VARCHAR(50) NOT NULL DEFAULT 'no_iniciado' CHECK (estado IN ('no_iniciado', 'en_progreso', 'completado')),
+    duracion VARCHAR(50), -- ej: "45 min", "1.5 horas"
+    modulos INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabla de módulos de webinar
+CREATE TABLE webinar_modulos (
+    id SERIAL PRIMARY KEY,
+    webinar_id INTEGER REFERENCES webinars(id) ON DELETE CASCADE,
+    titulo VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    orden INTEGER NOT NULL DEFAULT 0,
+    tipo_contenido VARCHAR(50) NOT NULL DEFAULT 'video' CHECK (tipo_contenido IN ('video', 'presentacion', 'actividad', 'quiz')),
+    contenido_url TEXT,
+    duracion_estimada INTEGER, -- en minutos
+    obligatorio BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabla de progreso de estudiantes en webinars
+CREATE TABLE webinar_progreso_estudiantes (
+    webinar_id INTEGER REFERENCES webinars(id) ON DELETE CASCADE,
+    estudiante_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+    progreso_actual INTEGER NOT NULL DEFAULT 0 CHECK (progreso_actual >= 0 AND progreso_actual <= 100),
+    modulos_completados INTEGER NOT NULL DEFAULT 0,
+    tiempo_total_visto INTEGER NOT NULL DEFAULT 0, -- en minutos
+    ultima_actividad TIMESTAMPTZ,
+    completado BOOLEAN NOT NULL DEFAULT false,
+    fecha_completado TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (webinar_id, estudiante_id)
+);
+
+-- Tabla de personalización de webinar
+CREATE TABLE personalizacion_webinar (
+    id SERIAL PRIMARY KEY,
+    webinar_id INTEGER REFERENCES webinars(id) ON DELETE CASCADE,
+    estilos JSONB,
+    orden_componentes JSONB,
+    privacidad_componentes JSONB,
+    CONSTRAINT uq_personalizacion_webinar UNIQUE (webinar_id)
+);
 CREATE TABLE personalizacion_examen (
     id SERIAL PRIMARY KEY,
     examen_id INTEGER REFERENCES examenes(id) ON DELETE CASCADE,
@@ -266,6 +380,18 @@ CREATE INDEX idx_cursos_area ON cursos(area_conocimiento_id);
 CREATE INDEX idx_actividades_curso ON actividades(curso_id);
 CREATE INDEX idx_calificaciones_actividad ON calificaciones(actividad_id);
 CREATE INDEX idx_calificaciones_estudiante ON calificaciones(estudiante_id);
+
+-- Índices para las nuevas tablas
+CREATE INDEX idx_modulos_curso ON modulos(curso_id);
+CREATE INDEX idx_modulos_tipo ON modulos(tipo);
+CREATE INDEX idx_temas_modulo ON temas(modulo_id);
+CREATE INDEX idx_unidades_tema ON unidades(tema_id);
+CREATE INDEX idx_actividades_entrega_unidad ON actividades_entrega(unidad_id);
+CREATE INDEX idx_entregas_actividad ON entregas(actividad_entrega_id);
+CREATE INDEX idx_entregas_estudiante ON entregas(estudiante_id);
+CREATE INDEX idx_webinars_curso ON webinars(curso_id);
+CREATE INDEX idx_webinar_modulos_webinar ON webinar_modulos(webinar_id);
+CREATE INDEX idx_webinar_progreso_estudiante ON webinar_progreso_estudiantes(estudiante_id);
 
 -- Insertar roles básicos
 INSERT INTO roles (nombre) VALUES
@@ -324,7 +450,7 @@ ON CONFLICT DO NOTHING;
 -- Tabla de notificaciones
 CREATE TABLE notificaciones (
     id SERIAL PRIMARY KEY,
-    usuario_id BIGINT NOT NULL,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     titulo VARCHAR(255) NOT NULL,
     mensaje TEXT NOT NULL,
     tipo VARCHAR(50) NOT NULL,
@@ -340,4 +466,36 @@ CREATE INDEX idx_notificaciones_usuario_id ON notificaciones(usuario_id);
 CREATE INDEX idx_notificaciones_tipo ON notificaciones(tipo);
 CREATE INDEX idx_notificaciones_leida ON notificaciones(leida);
 
--- Insertar datos de ejemplo para notificaciones
+-- Insertar módulos de ejemplo para el curso de Álgebra Básica
+INSERT INTO modulos (
+    curso_id, nombre, descripcion, orden, tipo, visible, obligatorio, duracion_estimada
+) VALUES
+    (1, 'Estructura del Curso', 'Organización y navegación del contenido del curso', 1, 'estructura_contenido', true, true, 30),
+    (1, 'Taller de Ejercicios', 'Práctica intensiva con ejercicios resueltos', 2, 'taller', true, false, 120),
+    (1, 'Evaluación Final', 'Examen final del módulo de álgebra básica', 3, 'evaluacion', true, true, 90)
+ON CONFLICT DO NOTHING;
+
+-- Insertar temas de ejemplo
+INSERT INTO temas (
+    modulo_id, nombre, descripcion, orden, visible
+) VALUES
+    (1, 'Introducción a la Programación', 'Conceptos básicos y fundamentos de la programación', 1, true),
+    (1, 'Estructuras de Control', 'Control del flujo de ejecución', 2, true)
+ON CONFLICT DO NOTHING;
+
+-- Insertar unidades de ejemplo
+INSERT INTO unidades (
+    tema_id, nombre, descripcion, orden, visible
+) VALUES
+    (1, 'Algoritmos y Lógica', 'Entendiendo el pensamiento algorítmico', 1, true),
+    (1, 'Variables y Tipos de Datos', 'Conceptos fundamentales de datos', 2, true),
+    (2, 'Condicionales', 'Estructuras if-else y switch', 1, true)
+ON CONFLICT DO NOTHING;
+
+-- Insertar webinars de ejemplo
+INSERT INTO webinars (
+    curso_id, titulo, descripcion, progreso, estado, duracion, modulos
+) VALUES
+    (1, 'Introducción a la Programación Web', 'Aprende los fundamentos del desarrollo web con ejemplos prácticos', 75, 'en_progreso', '45 min', 8),
+    (2, 'Bases de Datos Relacionales', 'Explora el diseño y gestión de bases de datos con SQL', 100, 'completado', '60 min', 12)
+ON CONFLICT DO NOTHING;

@@ -7,13 +7,14 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::{config::Config, database::DbExecutor};
-pub mod rol;
 pub mod actividad;
+pub mod actividad_entrega;
 pub mod area_conocimiento;
 pub mod calificacion;
 pub mod contenido_plantilla;
 pub mod contenido_transversal;
 pub mod curso;
+pub mod entrega;
 pub mod evaluacion_calificacion;
 pub mod evaluacion_sesion;
 pub mod evento_programado;
@@ -28,7 +29,13 @@ pub mod portafolio;
 pub mod portafolio_contenido;
 pub mod pregunta_examen;
 pub mod profesor_curso;
+pub mod rol;
+pub mod tema;
+pub mod unidad;
 pub mod usuario;
+pub mod webinar;
+pub mod webinar_modulo;
+pub mod webinar_progreso_estudiante;
 
 // Application state shared across handlers
 #[derive(Clone)]

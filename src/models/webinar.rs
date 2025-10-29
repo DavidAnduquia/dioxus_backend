@@ -3,20 +3,17 @@ use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "modulos")]
+#[sea_orm(table_name = "webinars")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
     pub id: i32,
     pub curso_id: i32,
-    pub nombre: String,
+    pub titulo: String,
     pub descripcion: Option<String>,
-    pub orden: i32,
-    pub visible: bool,
-    pub tipo: String, // 'estructura_contenido' | 'taller' | 'evaluacion' | etc.
-    pub fecha_inicio: Option<DateTime<Utc>>,
-    pub fecha_fin: Option<DateTime<Utc>>,
-    pub duracion_estimada: Option<i32>, // en minutos
-    pub obligatorio: bool,
+    pub progreso: i32, // porcentaje 0-100
+    pub estado: String, // 'no_iniciado' | 'en_progreso' | 'completado'
+    pub duracion: Option<String>, // ej: "45 min", "1.5 horas"
+    pub modulos: i32, // número de módulos
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
@@ -24,8 +21,8 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Curso,
-    Temas,
-    Archivos,
+    Modulos,
+    ProgresoEstudiantes,
 }
 
 impl RelationTrait for Relation {
@@ -35,13 +32,13 @@ impl RelationTrait for Relation {
                 .from(Column::CursoId)
                 .to(super::curso::Column::Id)
                 .into(),
-            Self::Temas => Entity::has_many(super::tema::Entity)
+            Self::Modulos => Entity::has_many(super::webinar_modulo::Entity)
                 .from(Column::Id)
-                .to(super::tema::Column::ModuloId)
+                .to(super::webinar_modulo::Column::WebinarId)
                 .into(),
-            Self::Archivos => Entity::has_many(super::modulo_archivo::Entity)
+            Self::ProgresoEstudiantes => Entity::has_many(super::webinar_progreso_estudiante::Entity)
                 .from(Column::Id)
-                .to(super::modulo_archivo::Column::ModuloId)
+                .to(super::webinar_progreso_estudiante::Column::WebinarId)
                 .into(),
         }
     }
@@ -53,15 +50,15 @@ impl Related<super::curso::Entity> for Entity {
     }
 }
 
-impl Related<super::tema::Entity> for Entity {
+impl Related<super::webinar_modulo::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Temas.def()
+        Relation::Modulos.def()
     }
 }
 
-impl Related<super::modulo_archivo::Entity> for Entity {
+impl Related<super::webinar_progreso_estudiante::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Archivos.def()
+        Relation::ProgresoEstudiantes.def()
     }
 }
 

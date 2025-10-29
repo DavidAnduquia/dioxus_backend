@@ -1,0 +1,52 @@
+use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
+use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
+#[sea_orm(table_name = "unidades")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = true)]
+    pub id: i32,
+    pub tema_id: i32,
+    pub nombre: String,
+    pub descripcion: Option<String>,
+    pub orden: i32,
+    pub visible: bool,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter)]
+pub enum Relation {
+    Tema,
+    ActividadesEntrega,
+}
+
+impl RelationTrait for Relation {
+    fn def(&self) -> RelationDef {
+        match self {
+            Self::Tema => Entity::belongs_to(super::tema::Entity)
+                .from(Column::TemaId)
+                .to(super::tema::Column::Id)
+                .into(),
+            Self::ActividadesEntrega => Entity::has_many(super::actividad_entrega::Entity)
+                .from(Column::Id)
+                .to(super::actividad_entrega::Column::UnidadId)
+                .into(),
+        }
+    }
+}
+
+impl Related<super::tema::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Tema.def()
+    }
+}
+
+impl Related<super::actividad_entrega::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ActividadesEntrega.def()
+    }
+}
+
+impl ActiveModelBehavior for ActiveModel {}

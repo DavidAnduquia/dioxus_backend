@@ -1,5 +1,5 @@
 use axum::extract::FromRef;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set, Order};
 use crate::{
     database::DbExecutor,
@@ -20,7 +20,12 @@ pub struct NuevoModulo {
     pub nombre: String,
     pub descripcion: Option<String>,
     pub orden: i32,
+    pub tipo: Option<String>,
     pub visible: bool,
+    pub fecha_inicio: Option<DateTime<Utc>>,
+    pub fecha_fin: Option<DateTime<Utc>>,
+    pub duracion_estimada: Option<i32>,
+    pub obligatorio: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -28,7 +33,12 @@ pub struct ActualizarModulo {
     pub nombre: Option<String>,
     pub descripcion: Option<String>,
     pub orden: Option<i32>,
+    pub tipo: Option<String>,
     pub visible: Option<bool>,
+    pub fecha_inicio: Option<DateTime<Utc>>,
+    pub fecha_fin: Option<DateTime<Utc>>,
+    pub duracion_estimada: Option<i32>,
+    pub obligatorio: Option<bool>,
 }
 
 impl ModuloService {
@@ -57,7 +67,12 @@ impl ModuloService {
             nombre: Set(nuevo_modulo.nombre),
             descripcion: Set(nuevo_modulo.descripcion),
             orden: Set(nuevo_modulo.orden),
+            tipo: Set(nuevo_modulo.tipo.unwrap_or_else(|| "estructura_contenido".to_string())),
             visible: Set(nuevo_modulo.visible),
+            fecha_inicio: Set(nuevo_modulo.fecha_inicio),
+            fecha_fin: Set(nuevo_modulo.fecha_fin),
+            duracion_estimada: Set(nuevo_modulo.duracion_estimada),
+            obligatorio: Set(nuevo_modulo.obligatorio.unwrap_or(true)),
             created_at: Set(Some(ahora)),
             updated_at: Set(Some(ahora)),
         };
@@ -117,6 +132,26 @@ impl ModuloService {
 
         if let Some(visible) = datos_actualizados.visible {
             modulo.visible = Set(visible);
+        }
+
+        if let Some(tipo) = datos_actualizados.tipo {
+            modulo.tipo = Set(tipo);
+        }
+
+        if let Some(fecha_inicio) = datos_actualizados.fecha_inicio {
+            modulo.fecha_inicio = Set(Some(fecha_inicio));
+        }
+
+        if let Some(fecha_fin) = datos_actualizados.fecha_fin {
+            modulo.fecha_fin = Set(Some(fecha_fin));
+        }
+
+        if let Some(duracion_estimada) = datos_actualizados.duracion_estimada {
+            modulo.duracion_estimada = Set(Some(duracion_estimada));
+        }
+
+        if let Some(obligatorio) = datos_actualizados.obligatorio {
+            modulo.obligatorio = Set(obligatorio);
         }
 
         modulo.updated_at = Set(Some(ahora));
