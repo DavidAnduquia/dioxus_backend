@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use axum::extract::FromRef;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
@@ -185,13 +185,28 @@ impl UsuarioService {
         }
 
         // Crear el nuevo usuario
+        let fecha_nacimiento = nuevo_usuario
+            .fecha_nacimiento
+            .parse::<chrono::NaiveDate>()
+            .map_err(|_| AppError::BadRequest("La fecha de nacimiento es inválida".into()))?;
+
         let usuario = usuario::ActiveModel {
             nombre: Set(nuevo_usuario.nombre),
             documento_nit: Set(nuevo_usuario.documento_nit),
             correo: Set(nuevo_usuario.correo),
             contrasena: Set(nuevo_usuario.contrasena),
+            foto_url: Set(nuevo_usuario.foto_url),
             rol_id: Set(nuevo_usuario.rol_id),
+            semestre: Set(nuevo_usuario.semestre),
+            genero: Set(nuevo_usuario.genero),
+            fecha_nacimiento: Set(fecha_nacimiento),
             estado: Set(Some(nuevo_usuario.estado.unwrap_or(true))),
+            token_primer_ingreso: Set(
+                nuevo_usuario
+                    .token_primer_ingreso
+                    .and_then(|fecha| fecha.parse::<chrono::NaiveDateTime>().ok())
+                    .map(|dt| DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc)),
+            ),
             fecha_creacion: Set(Some(Utc::now())),
             fecha_actualizacion: Set(Some(Utc::now())),
             ..Default::default()

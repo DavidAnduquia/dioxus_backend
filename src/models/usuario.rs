@@ -13,7 +13,11 @@ pub struct Model {
     pub correo: String,
     #[serde(skip_serializing)]
     pub contrasena: String,
+    pub foto_url: Option<String>,
     pub rol_id: i32,
+    pub semestre: Option<i32>,
+    pub genero: String,
+    pub fecha_nacimiento: Date,
     pub estado: Option<bool>,
     #[sea_orm(column_name = "fecha_creacion")]
     pub fecha_creacion: Option<DateTime<Utc>>,
@@ -21,6 +25,7 @@ pub struct Model {
     pub fecha_actualizacion: Option<DateTime<Utc>>,
     #[sea_orm(column_name = "fecha_ultima_conexion")]
     pub fecha_ultima_conexion: Option<DateTime<Utc>>,
+    pub token_primer_ingreso: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -36,8 +41,13 @@ pub struct NewUsuario {
     pub documento_nit: Option<String>,
     pub correo: String,
     pub contrasena: String,
+    pub foto_url: Option<String>,
     pub rol_id: i32,
     pub estado: Option<bool>,
+    pub semestre: Option<i32>,
+    pub genero: String,
+    pub fecha_nacimiento: String,
+    pub token_primer_ingreso: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
