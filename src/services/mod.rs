@@ -8,6 +8,9 @@ pub mod examen_service;
 pub mod matricula_service;
 pub mod modulo_service;
 pub mod actividad_service;
+pub mod storage_service; // Servicio de almacenamiento para S3/R2
+pub mod tema_service;
+pub mod unidad_service;
 
 // Servicios con dependencias pendientes (async_trait)
 // Descomentar cuando se refactoricen

@@ -1,6 +1,6 @@
 use axum::extract::FromRef;
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set, Order};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set, Order, PaginatorTrait};
 
 use crate::{
     database::DbExecutor,
@@ -121,13 +121,68 @@ impl MatriculaService {
         curso_id: i32,
     ) -> Result<Vec<HistorialModel>, AppError> {
         let db = self.connection();
-        let matriculas = Historial::find()
+
+        println!("🔍 Debug: Método obtener_matriculas_curso llamado para curso_id: {}", curso_id);
+
+        // Verificar primero si existen matrículas
+        let matriculas_count = Historial::find()
             .filter(historial_curso_estudiante::Column::CursoId.eq(curso_id))
+            .count(&db)
+            .await?;
+        
+        println!("📊 Encontradas {} matrículas en total para curso {}", matriculas_count, curso_id);
+
+        // Obtener matrículas con información del estudiante usando JOIN
+        let matriculas_con_estudiantes = Historial::find()
+            .filter(historial_curso_estudiante::Column::CursoId.eq(curso_id))
+            .find_also_related(Usuario)
             .order_by(historial_curso_estudiante::Column::FechaInscripcion, Order::Asc)
             .all(&db)
             .await?;
 
-        Ok(matriculas)
+        // Debug: Verificar si los usuarios existen
+        let estudiante_ids: Vec<i32> = matriculas_con_estudiantes.iter()
+            .map(|(matricula, _)| matricula.estudiante_id)
+            .collect();
+        
+        println!("👥 IDs de estudiantes encontrados: {:?}", estudiante_ids);
+        
+        for estudiante_id in &estudiante_ids {
+            if let Some(usuario) = Usuario::find_by_id(*estudiante_id).one(&db).await? {
+                println!("✅ Usuario {} existe: {} ({})", estudiante_id, usuario.nombre, usuario.correo);
+            } else {
+                println!("❌ Usuario {} NO existe en tabla usuarios", estudiante_id);
+            }
+        }
+
+        println!("🔍 Debug JOIN: Encontradas {} matrículas con JOIN para curso {}", matriculas_con_estudiantes.len(), curso_id);
+        for (matricula, estudiante_opt) in &matriculas_con_estudiantes {
+            println!("📝 Matrícula ID: {}, Estudiante ID: {}, Usuario encontrado: {}", 
+                matricula.id, matricula.estudiante_id, estudiante_opt.is_some());
+            if let Some(estudiante) = estudiante_opt {
+                println!("👤 Usuario datos: ID={}, Nombre='{}', Correo='{}'", 
+                    estudiante.id, estudiante.nombre, estudiante.correo);
+            } else {
+                println!("❌ Usuario NO encontrado para estudiante_id: {}", matricula.estudiante_id);
+            }
+        }
+
+        // Transformar los resultados para incluir la información del estudiante en el modelo
+        let mut matriculas_completas = Vec::new();
+
+        for (matricula, estudiante_opt) in matriculas_con_estudiantes {
+            let mut matricula_completa = matricula.clone();
+
+            // Si tenemos información del estudiante, la agregamos a los campos adicionales
+            if let Some(estudiante) = estudiante_opt {
+                matricula_completa.nombre = Some(estudiante.nombre.clone());
+                matricula_completa.email = Some(estudiante.correo.clone());
+            }
+
+            matriculas_completas.push(matricula_completa);
+        }
+
+        Ok(matriculas_completas)
     }
 }
 

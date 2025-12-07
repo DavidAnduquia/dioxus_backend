@@ -20,6 +20,9 @@ pub mod matricula;
 pub mod modulo;
 pub mod actividad;
 pub mod notificacion;
+pub mod storage; // Rutas para subida de archivos
+pub mod tema;
+pub mod unidad;
 
 #[derive(Deserialize)]
 struct OAuth2TokenRequest {
@@ -72,6 +75,9 @@ pub fn create_app() -> Router<AppState> {
         .merge(modulo::modulo_routes())
         .merge(actividad::actividad_routes())
         .merge(notificacion::notificacion_routes())
+        .merge(tema::tema_routes())
+        .merge(unidad::unidad_routes())
+        .merge(storage::storage_routes()) // Rutas para subida de archivos
         .route("/api-docs/openapi.json", get(serve_openapi_spec))
         .route("/swagger-ui", get(serve_swagger_ui))
         .route("/swagger-ui/", get(serve_swagger_ui))

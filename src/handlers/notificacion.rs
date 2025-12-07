@@ -51,8 +51,12 @@ pub async fn obtener_notificaciones_usuario(
 ) -> Result<Json<NotificacionesResponse>, AppError> {
     let service = NotificacionService::from_ref(&state);
 
+    // Convertir usuario_id de i64 (ruta) a i32 (modelo/BD)
+    let usuario_id_i32 = i32::try_from(usuario_id)
+        .map_err(|_| AppError::BadRequest("usuario_id fuera de rango para i32".into()))?;
+
     let (notificaciones, total) = service
-        .obtener_por_usuario(usuario_id, params.leida, params.limit, params.offset)
+        .obtener_por_usuario(usuario_id_i32, params.leida, params.limit, params.offset)
         .await?;
 
     let notificaciones_json: Vec<Value> = notificaciones
@@ -103,7 +107,10 @@ pub async fn marcar_todas_leidas(
 ) -> Result<Json<Value>, AppError> {
     let service = NotificacionService::from_ref(&state);
 
-    service.marcar_todas_como_leidas(usuario_id).await?;
+    let usuario_id_i32 = i32::try_from(usuario_id)
+        .map_err(|_| AppError::BadRequest("usuario_id fuera de rango para i32".into()))?;
+
+    service.marcar_todas_como_leidas(usuario_id_i32).await?;
 
     Ok(Json(json!({
         "message": "Todas las notificaciones marcadas como leídas",

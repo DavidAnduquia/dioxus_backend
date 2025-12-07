@@ -27,10 +27,7 @@ pub async fn listar_modulos_por_curso(
     Path(curso_id): Path<i32>,
 ) -> Result<Json<Vec<ModuloModel>>, AppError> {
     let service = ModuloService::from_ref(&state);
-    let modulos = service
-        .obtener_modulos_por_curso(curso_id)
-        .await
-        .map_err(AppError::from)?;
+    let modulos = service.obtener_modulos_por_curso(curso_id).await?;
     Ok(Json(modulos))
 }
 

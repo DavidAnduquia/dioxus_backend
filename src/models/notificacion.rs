@@ -7,7 +7,7 @@ use sea_orm::{entity::prelude::*, JsonValue};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
     pub id: i32,
-    pub usuario_id: i64,
+    pub usuario_id: i32,
     pub titulo: String,
     pub mensaje: String,
     pub tipo: String,

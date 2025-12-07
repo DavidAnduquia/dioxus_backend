@@ -55,7 +55,7 @@ pub async fn obtener_matriculas_estudiante(
 }
 
 pub async fn obtener_matriculas_curso(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    // _auth_user: AuthUser,  // Validar JWT automáticamente - TEMPORALMENTE DESHABILITADO
     State(state): State<AppState>,
     Path(curso_id): Path<i32>,
 ) -> Result<Json<Vec<crate::models::historial_curso_estudiante::Model>>, AppError> {

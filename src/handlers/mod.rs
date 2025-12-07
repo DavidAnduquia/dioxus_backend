@@ -11,3 +11,6 @@ pub mod modulo;
 pub mod actividad;
 pub mod notificacion;
 pub mod metrics; //* Cambio nuevo */ Handler para métricas de memoria
+pub mod storage; // Handler para subida de archivos a S3/R2
+pub mod tema;
+pub mod unidad;

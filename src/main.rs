@@ -1,12 +1,13 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use tower_http::cors::CorsLayer;
 use tower::ServiceBuilder;
 use tower_http::{
-    cors::CorsLayer, 
     trace::TraceLayer,
     limit::RequestBodyLimitLayer,
 };
+use axum::http::{Method, HeaderName};
 mod config;
 mod database;
 mod handlers;
@@ -77,8 +78,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .layer(RequestBodyLimitLayer::new(512 * 1024))
                 // Logging de requests HTTP
                 .layer(TraceLayer::new_for_http())
-                // CORS permisivo (ajustar en producción)
-                .layer(CorsLayer::permissive())
+                // CORS configurado para desarrollo (permite localhost:8080 del frontend)
+                .layer(
+                    CorsLayer::new()
+                        .allow_origin([
+                            "http://localhost:8080".parse().unwrap(), // Frontend Dioxus
+                            "http://127.0.0.1:8080".parse().unwrap(), // Frontend alternativo
+                        ]) // Orígenes específicos para desarrollo
+                        .allow_methods([
+                            Method::GET,
+                            Method::POST,
+                            Method::PUT,
+                            Method::DELETE,
+                            Method::OPTIONS,
+                        ]) // Métodos HTTP específicos
+                        .allow_headers([
+                            HeaderName::from_static("authorization"),
+                            HeaderName::from_static("content-type"),
+                            HeaderName::from_static("accept"),
+                            HeaderName::from_static("cache-control"),
+                        ]) // Headers específicos para JWT
+                        .allow_credentials(true) // Permite credenciales (cookies, auth headers)
+                )
         )
         // Métricas de performance (solo requests lentos)
         .layer(axum::middleware::from_fn(middleware::memory::performance_metrics))

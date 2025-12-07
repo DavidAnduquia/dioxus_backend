@@ -244,7 +244,7 @@ CREATE TABLE temas (
 -- Tabla de unidades (dentro de temas)
 CREATE TABLE unidades (
     id SERIAL PRIMARY KEY,
-    tema_id INTEGER REFERENCES temas(id) ON DELETE CASCADE,
+    modulo_id INTEGER REFERENCES modulos(id) ON DELETE CASCADE,
     nombre VARCHAR(200) NOT NULL,
     descripcion TEXT,
     orden INTEGER NOT NULL DEFAULT 0,
@@ -280,6 +280,34 @@ CREATE TABLE entregas (
     comentario_profesor TEXT,
     fecha_calificacion TIMESTAMPTZ,
     estado VARCHAR(50) NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'calificado', 'rechazado')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabla de contenidos por unidad (texto, archivo, video, quiz, actividad_entrega)
+CREATE TABLE contenidos_unidad (
+    id SERIAL PRIMARY KEY,
+    unidad_id INTEGER NOT NULL REFERENCES unidades(id) ON DELETE CASCADE,
+
+    tipo VARCHAR(50) NOT NULL CHECK (
+        tipo IN ('texto', 'archivo', 'video', 'quiz', 'actividad_entrega')
+    ),
+
+    titulo VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    orden INTEGER NOT NULL DEFAULT 0,
+
+    -- Campos directos
+    texto_largo TEXT,
+    archivo_url TEXT,
+    archivo_tipo VARCHAR(100),
+    video_url TEXT,
+
+    -- Enlaces a otras tablas segun tipo
+    examen_id INTEGER REFERENCES examenes(id) ON DELETE CASCADE,
+    entrega_id INTEGER REFERENCES entregas(id) ON DELETE CASCADE,
+
+    activo BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -385,10 +413,11 @@ CREATE INDEX idx_calificaciones_estudiante ON calificaciones(estudiante_id);
 CREATE INDEX idx_modulos_curso ON modulos(curso_id);
 CREATE INDEX idx_modulos_tipo ON modulos(tipo);
 CREATE INDEX idx_temas_modulo ON temas(modulo_id);
-CREATE INDEX idx_unidades_tema ON unidades(tema_id);
+CREATE INDEX idx_unidades_modulo ON unidades(modulo_id);
 CREATE INDEX idx_actividades_entrega_unidad ON actividades_entrega(unidad_id);
 CREATE INDEX idx_entregas_actividad ON entregas(actividad_entrega_id);
 CREATE INDEX idx_entregas_estudiante ON entregas(estudiante_id);
+CREATE INDEX idx_contenidos_unidad_unidad ON contenidos_unidad(unidad_id);
 CREATE INDEX idx_webinars_curso ON webinars(curso_id);
 CREATE INDEX idx_webinar_modulos_webinar ON webinar_modulos(webinar_id);
 CREATE INDEX idx_webinar_progreso_estudiante ON webinar_progreso_estudiantes(estudiante_id);

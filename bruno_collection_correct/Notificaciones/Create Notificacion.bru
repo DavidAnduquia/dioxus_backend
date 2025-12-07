@@ -10,12 +10,12 @@ post {
   auth: bearer
 }
 
-auth:bearer {
-  token: {{JWT_TOKEN}}
-}
-
 headers {
   Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{JWT_TOKEN}}
 }
 
 body:json {
@@ -25,7 +25,7 @@ body:json {
     "mensaje": "Esta es una notificación de prueba creada desde Bruno",
     "tipo": "info",
     "leida": false,
-    "enlace": "/dashboard",
+    "enlace": null,
     "datos_adicionales": {
       "prioridad": "alta",
       "categoria": "sistema"

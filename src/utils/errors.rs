@@ -4,6 +4,7 @@ use axum::{
 };
 use thiserror::Error;
 
+use crate::services::storage_service::StorageError;
 use crate::models::ApiResponse;
 
 #[derive(Error, Debug)] 
@@ -52,6 +53,15 @@ pub enum AppError {
 
     #[error("SeaORM database error: {0}")]
     SeaOrm(#[from] sea_orm::DbErr),
+
+    #[error("Storage error: {0}")]
+    Storage(#[from] StorageError),
+
+    #[error("Multipart error: {0}")]
+    Multipart(#[from] axum::extract::multipart::MultipartRejection),
+
+    #[error("Multipart field error: {0}")]
+    MultipartField(String),
 }
 
 
@@ -120,6 +130,18 @@ impl IntoResponse for AppError {
             AppError::SeaOrm(ref e) => {
                 tracing::error!("SeaORM database error: {:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Database error".into())
+            }
+            AppError::Storage(ref e) => {
+                tracing::error!("Storage error: {:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Storage error".into())
+            }
+            AppError::Multipart(ref e) => {
+                tracing::error!("Multipart error: {:?}", e);
+                (StatusCode::BAD_REQUEST, "Multipart error".into())
+            }
+            AppError::MultipartField(ref e) => {
+                tracing::error!("Multipart field error: {}", e);
+                (StatusCode::BAD_REQUEST, std::borrow::Cow::Owned(e.clone()))
             }
         };
 

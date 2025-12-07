@@ -17,8 +17,6 @@ pub struct Model {
     pub fecha_fin: Option<DateTime<Utc>>,
     pub duracion_estimada: Option<i32>, // en minutos
     pub obligatorio: bool,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

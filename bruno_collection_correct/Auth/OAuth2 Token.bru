@@ -17,7 +17,7 @@ headers {
 body:json {
   {
     "grant_type": "password",
-    "email": "test@example.com",
+    "email": "david.anduquia@aulavirtual.com",
     "password": "admin123",
     "scope": "read write"
   }
@@ -29,7 +29,7 @@ script:post-response {
     try {
       const responseData = res.body;
       console.log("📥 Respuesta OAuth2:", JSON.stringify(responseData, null, 2));
-
+  
       if (responseData.access_token) {
         const accessToken = responseData.access_token;
         bru.setEnvVar("JWT_TOKEN", accessToken);

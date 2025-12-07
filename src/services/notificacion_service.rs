@@ -30,7 +30,7 @@ impl FromRef<AppState> for NotificacionService {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NuevaNotificacion {
-    pub usuario_id: i64,
+    pub usuario_id: i32,
     pub titulo: String,
     pub mensaje: String,
     pub tipo: String,
@@ -87,7 +87,7 @@ impl NotificacionService {
 
     pub async fn obtener_por_usuario(
         &self,
-        usuario_id: i64,
+        usuario_id: i32,
         leida: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
@@ -136,7 +136,7 @@ impl NotificacionService {
 
     pub async fn marcar_todas_como_leidas(
         &self,
-        usuario_id: i64,
+        usuario_id: i32,
     ) -> Result<u64, AppError> {
         // Obtener todas las notificaciones no leídas del usuario
         let notificaciones = Notificacion::find()
@@ -171,7 +171,7 @@ impl NotificacionService {
     #[allow(dead_code)]
     pub async fn obtener_no_leidas(
         &self,
-        usuario_id: i64,
+        usuario_id: i32,
         limit: Option<u64>,
     ) -> Result<Vec<NotificacionModel>, DbErr> {
         let mut query = Notificacion::find()
@@ -210,7 +210,7 @@ impl NotificacionService {
     #[allow(dead_code)]
     pub async fn obtener_estadisticas(
         &self,
-        usuario_id: i64,
+        usuario_id: i32,
     ) -> Result<(u64, u64, u64), AppError> {
         let total = Notificacion::find()
             .filter(notificacion::Column::UsuarioId.eq(usuario_id))

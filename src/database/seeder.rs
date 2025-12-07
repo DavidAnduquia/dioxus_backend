@@ -18,7 +18,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     migrate_users(pool).await?;
     
     // Migrar tabla posts (legacy)
-    migrate_posts(pool).await?;
+    //migrate_posts(pool).await?;
     
     // Migrar tabla roles usando SeaORM
     migrate_roles_with_seaorm(&db).await?;
@@ -31,7 +31,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
 async fn migrate_users(pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        CREATE TABLE IF NOT EXISTS rustdema.users (
+        CREATE TABLE IF NOT EXISTS rustdema2.users (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             email VARCHAR(255) UNIQUE NOT NULL,
             password_hash VARCHAR(255) NOT NULL,

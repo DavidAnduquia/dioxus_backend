@@ -60,9 +60,8 @@ impl ModuloService {
         }
 
         let db = self.connection();
-        let ahora = Utc::now();
         let modulo = modulo::ActiveModel {
-            id: Set(0), // Auto-increment field
+            // No establecer id: dejar que la BD autoincremente
             curso_id: Set(nuevo_modulo.curso_id),
             nombre: Set(nuevo_modulo.nombre),
             descripcion: Set(nuevo_modulo.descripcion),
@@ -73,8 +72,7 @@ impl ModuloService {
             fecha_fin: Set(nuevo_modulo.fecha_fin),
             duracion_estimada: Set(nuevo_modulo.duracion_estimada),
             obligatorio: Set(nuevo_modulo.obligatorio.unwrap_or(true)),
-            created_at: Set(Some(ahora)),
-            updated_at: Set(Some(ahora)),
+            ..Default::default()
         };
 
         let modulo_creado = modulo.insert(&db).await?;
@@ -113,7 +111,6 @@ impl ModuloService {
             .ok_or_else(|| AppError::NotFound("Módulo no encontrado".into()))?;
 
         let mut modulo: modulo::ActiveModel = modulo.into();
-        let ahora = Utc::now();
 
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
@@ -154,7 +151,6 @@ impl ModuloService {
             modulo.obligatorio = Set(obligatorio);
         }
 
-        modulo.updated_at = Set(Some(ahora));
         let modulo_actualizado = modulo.update(&db).await?;
 
         Ok(modulo_actualizado)
