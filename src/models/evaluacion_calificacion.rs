@@ -20,3 +20,17 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NuevaCalificacion {
+    pub evaluacion_id: i32,
+    pub estudiante_id: i64,
+    pub calificacion: f64,
+    pub retroalimentacion: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ActualizarCalificacion {
+    pub calificacion: Option<f64>,
+    pub retroalimentacion: Option<String>,
+}

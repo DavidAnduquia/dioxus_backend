@@ -48,3 +48,30 @@ impl Related<super::unidad::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NuevoContenidoUnidad {
+    pub unidad_id: i32,
+    pub tipo_contenido: String,
+    pub titulo: String,
+    pub descripcion: Option<String>,
+    pub contenido: Option<String>,
+    pub url: Option<String>,
+    pub orden: i32,
+    pub visible: bool,
+    pub obligatorio: bool,
+    pub puntos: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ActualizarContenidoUnidad {
+    pub tipo_contenido: Option<String>,
+    pub titulo: Option<String>,
+    pub descripcion: Option<String>,
+    pub contenido: Option<String>,
+    pub url: Option<String>,
+    pub orden: Option<i32>,
+    pub visible: Option<bool>,
+    pub obligatorio: Option<bool>,
+    pub puntos: Option<i32>,
+}

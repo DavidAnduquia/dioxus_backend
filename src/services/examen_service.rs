@@ -1,10 +1,9 @@
 use axum::extract::FromRef;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter,
     Set,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::database::DbExecutor;
 use crate::models::{
@@ -13,34 +12,11 @@ use crate::models::{
 };
 use crate::utils::errors::AppError;
 
+pub use crate::models::examen::{ActualizarExamen, NuevoExamen};
+
 #[derive(Debug, Clone)]
 pub struct ExamenService {
     db: DbExecutor,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevoExamen {
-    pub curso_id: i32,
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub fecha_inicio: DateTime<Utc>,
-    pub fecha_fin: DateTime<Utc>,
-    pub duracion_minutos: i32,
-    pub intentos_permitidos: i32,
-    pub mostrar_resultados: bool,
-    pub estado: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarExamen {
-    pub nombre: Option<String>,
-    pub descripcion: Option<String>,
-    pub fecha_inicio: Option<DateTime<Utc>>,
-    pub fecha_fin: Option<DateTime<Utc>>,
-    pub duracion_minutos: Option<i32>,
-    pub intentos_permitidos: Option<i32>,
-    pub mostrar_resultados: Option<bool>,
-    pub estado: Option<String>,
 }
 
 impl ExamenService {

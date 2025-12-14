@@ -10,24 +10,11 @@ use crate::{
     utils::errors::AppError,
 };
 
+pub use crate::models::personalizacion_examen::{ActualizarPersonalizacionExamen, NuevaPersonalizacionExamen};
+
 #[derive(Debug, Clone)]
 pub struct PersonalizacionExamenService {
     db: DatabaseConnection,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevaPersonalizacionExamen {
-    pub examen_id: i32,
-    pub estilos: Option<Value>,
-    pub orden_componentes: Option<Value>,
-    pub privacidad_componentes: Option<Value>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarPersonalizacionExamen {
-    pub estilos: Option<Value>,
-    pub orden_componentes: Option<Value>,
-    pub privacidad_componentes: Option<Value>,
 }
 
 impl PersonalizacionExamenService {

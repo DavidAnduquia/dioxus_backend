@@ -4,6 +4,8 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 use tokio::sync::RwLock;
 
+use crate::models::socket::{ConnectionInfo, SocketMemoryMetrics};
+
 /// Estructura para manejar conexiones de WebSocket
 /// Equivalente a SocketService en TypeScript
 #[derive(Clone)]
@@ -175,23 +177,6 @@ impl Default for SocketService {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Información de conexión del servidor de sockets
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct ConnectionInfo {
-    pub connected_users: usize,
-    pub rooms: Vec<String>,
-}
-
-/// /* Cambio nuevo */ Métricas detalladas de memoria para SocketService
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct SocketMemoryMetrics {
-    pub total_users: usize,
-    pub total_connections: usize,
-    pub total_capacity: usize,
-    pub memory_overhead: usize,
-    pub largest_user_connections: usize,
 }
 
 /// Instancia singleton global del SocketService

@@ -9,28 +9,11 @@ use crate::{
     utils::errors::AppError,
 };
 
+pub use crate::models::modulo_archivo::{ActualizarModuloArchivo, NuevoModuloArchivo};
+
 #[derive(Debug, Clone)]
 pub struct ModuloArchivoService {
     db: DatabaseConnection,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevoModuloArchivo {
-    pub modulo_id: i32,
-    pub nombre_archivo: String,
-    pub ruta_archivo: String,
-    pub tipo_archivo: String,
-    pub tamano: i64,
-    pub descripcion: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarModuloArchivo {
-    pub nombre_archivo: Option<String>,
-    pub ruta_archivo: Option<String>,
-    pub tipo_archivo: Option<String>,
-    pub tamano: Option<i64>,
-    pub descripcion: Option<String>,
 }
 
 impl ModuloArchivoService {

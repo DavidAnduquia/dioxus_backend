@@ -12,28 +12,12 @@ use crate::{
     },
     utils::errors::AppError,
 };
-use serde::{Deserialize, Serialize};
+
+pub use crate::models::unidad::{ActualizarUnidad, NuevaUnidad};
 
 #[derive(Debug, Clone)]
 pub struct UnidadService {
     db: DbExecutor,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevaUnidad {
-    pub tema_id: i32,
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub orden: i32,
-    pub visible: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarUnidad {
-    pub nombre: Option<String>,
-    pub descripcion: Option<String>,
-    pub orden: Option<i32>,
-    pub visible: Option<bool>,
 }
 
 impl UnidadService {

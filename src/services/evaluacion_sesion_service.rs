@@ -7,30 +7,11 @@ use crate::{
     utils::errors::AppError,
 };
 
+pub use crate::models::evaluacion_sesion::{ActualizarEvaluacion, NuevaEvaluacion};
+
 #[derive(Debug, Clone)]
 pub struct EvaluacionSesionService {
     db: DatabaseConnection,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevaEvaluacion {
-    pub sesion_id: i32,
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub fecha_inicio: DateTime<Utc>,
-    pub fecha_fin: DateTime<Utc>,
-    pub tipo_evaluacion: String,
-    pub peso: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarEvaluacion {
-    pub nombre: Option<String>,
-    pub descripcion: Option<String>,
-    pub fecha_inicio: Option<DateTime<Utc>>,
-    pub fecha_fin: Option<DateTime<Utc>>,
-    pub tipo_evaluacion: Option<String>,
-    pub peso: Option<f64>,
 }
 
 impl EvaluacionSesionService {

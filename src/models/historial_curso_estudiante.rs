@@ -39,3 +39,19 @@ impl Related<super::usuario::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NuevoHistorial {
+    pub curso_id: i32,
+    pub estudiante_id: i64,
+    pub estado: String,
+    pub calificacion_final: Option<f64>,
+    pub aprobado: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ActualizarHistorial {
+    pub estado: Option<String>,
+    pub calificacion_final: Option<f64>,
+    pub aprobado: Option<bool>,
+}

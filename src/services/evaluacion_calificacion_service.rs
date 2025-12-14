@@ -7,23 +7,11 @@ use crate::{
     utils::errors::AppError,
 };
 
+pub use crate::models::evaluacion_calificacion::{ActualizarCalificacion, NuevaCalificacion};
+
 #[derive(Debug, Clone)]
 pub struct EvaluacionCalificacionService {
     db: DatabaseConnection,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevaCalificacion {
-    pub evaluacion_id: i32,
-    pub estudiante_id: i64,
-    pub calificacion: f64,
-    pub retroalimentacion: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarCalificacion {
-    pub calificacion: Option<f64>,
-    pub retroalimentacion: Option<String>,
 }
 
 impl EvaluacionCalificacionService {

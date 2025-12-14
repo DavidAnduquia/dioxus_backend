@@ -4,7 +4,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, ModelTrait, QueryFilter,
     QueryOrder, Set,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::{
     database::DbExecutor,
@@ -15,25 +14,11 @@ use crate::{
     utils::errors::AppError,
 };
 
+pub use crate::models::area_conocimiento::{ActualizarArea, NuevaArea};
+
 #[derive(Debug, Clone)]
 pub struct AreaConocimientoService {
     db: DbExecutor,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevaArea {
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub color_etiqueta: Option<String>,
-    pub estado: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarArea {
-    pub nombre: Option<String>,
-    pub descripcion: Option<String>,
-    pub color_etiqueta: Option<String>,
-    pub estado: Option<bool>,
 }
 
 impl AreaConocimientoService {

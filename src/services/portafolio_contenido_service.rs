@@ -3,35 +3,16 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
     ModelTrait, Set,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::{
     models::portafolio_contenido::{self, Entity as PortafolioContenido, Model as PortafolioContenidoModel},
+    models::portafolio_contenido::{ActualizarPortafolioContenido, NuevoPortafolioContenido},
     utils::errors::AppError,
 };
 
 #[derive(Debug, Clone)]
 pub struct PortafolioContenidoService {
     db: DatabaseConnection,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevoPortafolioContenido {
-    pub portafolio_id: i32,
-    pub tipo_contenido: String,
-    pub titulo: String,
-    pub descripcion: Option<String>,
-    pub contenido: String,
-    pub orden: i32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarPortafolioContenido {
-    pub tipo_contenido: Option<String>,
-    pub titulo: Option<String>,
-    pub descripcion: Option<String>,
-    pub contenido: Option<String>,
-    pub orden: Option<i32>,
 }
 
 impl PortafolioContenidoService {

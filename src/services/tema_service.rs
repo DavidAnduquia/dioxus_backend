@@ -13,28 +13,12 @@ use crate::{
     },
     utils::errors::AppError,
 };
-use serde::{Deserialize, Serialize};
+
+pub use crate::models::tema::{ActualizarTema, NuevoTema};
 
 #[derive(Debug, Clone)]
 pub struct TemaService {
     db: DbExecutor,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevoTema {
-    pub modulo_id: i32,
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub orden: i32,
-    pub visible: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarTema {
-    pub nombre: Option<String>,
-    pub descripcion: Option<String>,
-    pub orden: Option<i32>,
-    pub visible: Option<bool>,
 }
 
 impl TemaService {

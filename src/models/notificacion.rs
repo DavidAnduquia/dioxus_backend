@@ -24,3 +24,14 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NuevaNotificacion {
+    pub usuario_id: i32,
+    pub titulo: String,
+    pub mensaje: String,
+    pub tipo: String,
+    pub leida: Option<bool>,
+    pub enlace: Option<String>,
+    pub datos_adicionales: Option<serde_json::Value>,
+}

@@ -4,7 +4,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, QuerySelect, Set,
 };
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
@@ -15,6 +14,8 @@ use crate::{
     },
     utils::errors::AppError,
 };
+
+pub use crate::models::notificacion::NuevaNotificacion;
 
 #[derive(Debug, Clone)]
 pub struct NotificacionService {
@@ -29,17 +30,6 @@ impl FromRef<AppState> for NotificacionService {
             .expect("Database connection is not available");
         NotificacionService::new(executor)
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevaNotificacion {
-    pub usuario_id: i32,
-    pub titulo: String,
-    pub mensaje: String,
-    pub tipo: String,
-    pub leida: Option<bool>,
-    pub enlace: Option<String>,
-    pub datos_adicionales: Option<Value>,
 }
 
 impl NotificacionService {

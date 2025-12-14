@@ -40,3 +40,22 @@ impl Related<super::modulo::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NuevoModuloArchivo {
+    pub modulo_id: i32,
+    pub nombre_archivo: String,
+    pub ruta_archivo: String,
+    pub tipo_archivo: String,
+    pub tamano: i64,
+    pub descripcion: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ActualizarModuloArchivo {
+    pub nombre_archivo: Option<String>,
+    pub ruta_archivo: Option<String>,
+    pub tipo_archivo: Option<String>,
+    pub tamano: Option<i64>,
+    pub descripcion: Option<String>,
+}

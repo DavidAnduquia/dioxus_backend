@@ -22,3 +22,23 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NuevoEvento {
+    pub titulo: String,
+    pub descripcion: Option<String>,
+    pub fecha_inicio: DateTime<Utc>,
+    pub fecha_fin: DateTime<Utc>,
+    pub tipo_evento: String,
+    pub curso_id: i32,
+    pub profesor_id: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ActualizarEvento {
+    pub titulo: Option<String>,
+    pub descripcion: Option<String>,
+    pub fecha_inicio: Option<DateTime<Utc>>,
+    pub fecha_fin: Option<DateTime<Utc>>,
+    pub tipo_evento: Option<String>,
+}

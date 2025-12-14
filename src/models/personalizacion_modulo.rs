@@ -27,3 +27,18 @@ pub enum Relation {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NuevaPersonalizacionModulo {
+    pub modulo_id: i32,
+    pub estilos: Option<Value>,
+    pub orden_componentes: Option<Value>,
+    pub privacidad_componentes: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ActualizarPersonalizacionModulo {
+    pub estilos: Option<Value>,
+    pub orden_componentes: Option<Value>,
+    pub privacidad_componentes: Option<Value>,
+}

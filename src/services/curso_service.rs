@@ -1,15 +1,14 @@
 use axum::extract::FromRef;
-use chrono::{NaiveDate, Utc};
+use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
     Order, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Set, TransactionTrait,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::{
     database::DbExecutor,
     models::{
-        area_conocimiento::{Entity as AreaConocimientoEntity, Model as AreaConocimiento},
+        area_conocimiento::Entity as AreaConocimientoEntity,
         curso::{self, Entity as Curso, Model as CursoModel},
         modulo::{self},
         tema::{self, Entity as Tema, Model as TemaModel},
@@ -19,6 +18,8 @@ use crate::{
     },
     utils::errors::AppError,
 };
+
+pub use crate::models::curso::{ActualizarCurso, AulaCurso, CursoDetallado, NuevoCurso, TemaAula, UnidadAula};
 
 #[derive(Debug, Clone)]
 pub struct CursoService {
@@ -33,66 +34,6 @@ impl FromRef<AppState> for CursoService {
             .expect("Database connection is not available");
         CursoService::new(executor)
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevoCurso {
-    pub nombre: String,
-    pub descripcion: String,
-    pub fecha_inicio: NaiveDate,
-    pub fecha_fin: NaiveDate,
-    pub prerequisito: Option<String>,
-    pub coordinador_id: i32,
-    pub semestre: Option<i32>,
-    pub periodo: String,
-    pub anio_pensum: i32,
-    pub area_conocimiento_id: i32,
-    pub plantilla_base_id: Option<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarCurso {
-    pub nombre: Option<String>,
-    pub descripcion: Option<String>,
-    pub fecha_inicio: Option<NaiveDate>,
-    pub fecha_fin: Option<NaiveDate>,
-    pub prerequisito: Option<String>,
-    pub coordinador_id: Option<i32>,
-    pub semestre: Option<i32>,
-    pub periodo: Option<String>,
-    pub anio_pensum: Option<i32>,
-    pub area_conocimiento_id: Option<i32>,
-    pub plantilla_base_id: Option<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CursoDetallado {
-    pub curso: CursoModel,
-    pub area: Option<AreaConocimiento>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnidadAula {
-    pub id: i32,
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub orden: Option<i32>,
-    pub tema_id: i32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TemaAula {
-    pub id: i32,
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub orden: Option<i32>,
-    pub unidades: Vec<UnidadAula>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AulaCurso {
-    pub curso: CursoModel,
-    pub temas: Vec<TemaAula>,
 }
 
 impl CursoService {

@@ -10,23 +10,11 @@ use crate::{
     utils::errors::AppError,
 };
 
+pub use crate::models::plantilla_curso::{ActualizarPlantillaCurso, NuevaPlantillaCurso};
+
 #[derive(Debug, Clone)]
 pub struct PlantillaCursoService {
     db: DatabaseConnection,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevaPlantillaCurso {
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub activa: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarPlantillaCurso {
-    pub nombre: Option<String>,
-    pub descripcion: Option<String>,
-    pub activa: Option<bool>,
 }
 
 impl PlantillaCursoService {

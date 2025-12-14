@@ -30,3 +30,19 @@ impl Related<super::curso::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NuevaArea {
+    pub nombre: String,
+    pub descripcion: Option<String>,
+    pub color_etiqueta: Option<String>,
+    pub estado: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ActualizarArea {
+    pub nombre: Option<String>,
+    pub descripcion: Option<String>,
+    pub color_etiqueta: Option<String>,
+    pub estado: Option<bool>,
+}

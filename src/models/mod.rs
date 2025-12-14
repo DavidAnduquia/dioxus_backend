@@ -32,6 +32,7 @@ pub mod portafolio_contenido;
 pub mod pregunta_examen;
 pub mod profesor_curso;
 pub mod rol;
+pub mod socket;
 pub mod tema;
 pub mod unidad;
 pub mod usuario;

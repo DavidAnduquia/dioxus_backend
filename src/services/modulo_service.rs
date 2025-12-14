@@ -5,43 +5,16 @@ use crate::{
     utils::errors::AppError,
 };
 use axum::extract::FromRef;
-use chrono::{DateTime, Utc};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, Order,
     QueryFilter, QueryOrder, Set,
 };
-use serde::{Deserialize, Serialize};
+
+pub use crate::models::modulo::{ActualizarModulo, NuevoModulo};
 
 #[derive(Debug, Clone)]
 pub struct ModuloService {
     db: DbExecutor,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevoModulo {
-    pub curso_id: i32,
-    pub nombre: String,
-    pub descripcion: Option<String>,
-    pub orden: i32,
-    pub tipo: Option<String>,
-    pub visible: bool,
-    pub fecha_inicio: Option<DateTime<Utc>>,
-    pub fecha_fin: Option<DateTime<Utc>>,
-    pub duracion_estimada: Option<i32>,
-    pub obligatorio: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarModulo {
-    pub nombre: Option<String>,
-    pub descripcion: Option<String>,
-    pub orden: Option<i32>,
-    pub tipo: Option<String>,
-    pub visible: Option<bool>,
-    pub fecha_inicio: Option<DateTime<Utc>>,
-    pub fecha_fin: Option<DateTime<Utc>>,
-    pub duracion_estimada: Option<i32>,
-    pub obligatorio: Option<bool>,
 }
 
 impl ModuloService {

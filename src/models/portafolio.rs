@@ -22,3 +22,19 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct NuevoPortafolio {
+    pub estudiante_id: i64,
+    pub curso_id: i32,
+    pub titulo: String,
+    pub descripcion: Option<String>,
+    pub estado: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct ActualizarPortafolio {
+    pub titulo: Option<String>,
+    pub descripcion: Option<String>,
+    pub estado: Option<String>,
+}

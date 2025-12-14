@@ -3,32 +3,17 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter,
     Set,
 };
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{
     models::personalizacion_portafolio::{self, Entity as PersonalizacionPortafolio, Model as PersonalizacionPortafolioModel},
     utils::errors::AppError,
 };
 
+pub use crate::models::personalizacion_portafolio::{ActualizarPersonalizacion, NuevaPersonalizacion};
+
 #[derive(Debug, Clone)]
 pub struct PersonalizacionPortafolioService {
     db: DatabaseConnection,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NuevaPersonalizacion {
-    pub portafolio_id: i32,
-    pub estilos: Option<Value>,
-    pub orden_componentes: Option<Value>,
-    pub privacidad_componentes: Option<Value>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ActualizarPersonalizacion {
-    pub estilos: Option<Value>,
-    pub orden_componentes: Option<Value>,
-    pub privacidad_componentes: Option<Value>,
 }
 
 impl PersonalizacionPortafolioService {

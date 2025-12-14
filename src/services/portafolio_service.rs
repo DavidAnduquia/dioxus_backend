@@ -4,7 +4,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
     ModelTrait, Set,
 };
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::{
@@ -12,23 +11,7 @@ use crate::{
     utils::errors::AppError,
 };
 
-// Estructura para crear un nuevo portafolio
-#[derive(Debug, Deserialize, Serialize)]
-pub struct NuevoPortafolio {
-    pub estudiante_id: i64,
-    pub curso_id: i32,
-    pub titulo: String,
-    pub descripcion: Option<String>,
-    pub estado: String,
-}
-
-// Estructura para actualizar un portafolio existente
-#[derive(Debug, Deserialize, Serialize, Default)]
-pub struct ActualizarPortafolio {
-    pub titulo: Option<String>,
-    pub descripcion: Option<String>,
-    pub estado: Option<String>,
-}
+pub use crate::models::portafolio::{ActualizarPortafolio, NuevoPortafolio};
 
 // Singleton compartido optimizado
 static PORTAFOLIO_SERVICE: OnceCell<Arc<PortafolioService>> = OnceCell::new();
