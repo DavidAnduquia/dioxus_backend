@@ -32,19 +32,13 @@ pub async fn login_usuario(
     Json(payload): Json<LoginPayload>,
 ) -> Result<Json<LoginResponse>, AppError> {
     let usuario = service
-        .login_usuario(
-        &payload.identificador,
-        &payload.contrasena,
-    )
+        .login_usuario(&payload.identificador, &payload.contrasena)
         .await?;
 
     // Generar token JWT
     let token = generate_token(&usuario, state.jwt_encoding_key.as_ref())?;
 
-    Ok(Json(LoginResponse {
-        token,
-        usuario,
-    }))
+    Ok(Json(LoginResponse { token, usuario }))
 }
 
 fn generate_token(
@@ -79,7 +73,7 @@ pub async fn logout_usuario(
 
 // GET /api/usuarios
 pub async fn listar_usuarios(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(service): State<Arc<UsuarioService>>,
 ) -> Result<Json<Vec<usuario_models::UsuarioConRol>>, AppError> {
     let usuarios = service.obtener_usuarios().await?;
@@ -88,7 +82,7 @@ pub async fn listar_usuarios(
 
 // POST /api/usuarios
 pub async fn crear_usuario(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(service): State<Arc<UsuarioService>>,
     Json(payload): Json<usuario_models::NewUsuario>,
 ) -> Result<Json<usuario_models::Model>, AppError> {
@@ -98,7 +92,7 @@ pub async fn crear_usuario(
 
 // PUT /api/usuarios/:id
 pub async fn actualizar_usuario(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     Path(id): Path<i32>,
     State(service): State<Arc<UsuarioService>>,
     Json(payload): Json<usuario_models::UpdateUsuario>,
@@ -109,18 +103,10 @@ pub async fn actualizar_usuario(
 
 // GET /api/usuarios/:id
 pub async fn obtener_usuario_por_id(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     Path(id): Path<i32>,
     State(service): State<Arc<UsuarioService>>,
 ) -> Result<Json<Option<usuario_models::Model>>, AppError> {
     let usuario = service.obtener_usuario_por_id(id).await?;
     Ok(Json(usuario))
-}
-
-// GET /api/usuarios/:id
-pub async fn get_usuario(
-    Path(_id): Path<i32>,
-    State(_service): State<Arc<UsuarioService>>,
-) -> Result<Json<Option<usuario_models::Model>>, String> {
-    Ok(Json(None))
 }

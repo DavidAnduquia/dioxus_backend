@@ -1,7 +1,8 @@
 use axum::extract::FromRef;
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, ModelTrait, QueryFilter,
+    QueryOrder, Set,
 };
 use serde::{Deserialize, Serialize};
 
@@ -39,7 +40,6 @@ impl AreaConocimientoService {
     pub fn new(db: DbExecutor) -> Self {
         Self { db }
     }
-
 
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()
@@ -88,10 +88,12 @@ impl AreaConocimientoService {
         let area = area_conocimiento::ActiveModel {
             nombre: Set(nueva_area.nombre),
             descripcion: Set(nueva_area.descripcion),
-            color_etiqueta: Set(nueva_area.color_etiqueta.unwrap_or_else(|| "transparent".into())),
+            color_etiqueta: Set(nueva_area
+                .color_etiqueta
+                .unwrap_or_else(|| "transparent".into())),
             estado: Set(nueva_area.estado),
             fecha_creacion: Set(Some(ahora)),
-            fecha_modificacion: Set(Some(ahora)),
+            fecha_actualizacion: Set(Some(ahora)),
             ..Default::default()
         };
 
@@ -114,7 +116,9 @@ impl AreaConocimientoService {
 
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
+                return Err(AppError::BadRequest(
+                    "El nombre no puede estar vacío".into(),
+                ));
             }
             area.nombre = Set(nombre);
         }
@@ -128,12 +132,16 @@ impl AreaConocimientoService {
             area.estado = Set(estado);
         }
 
-        area.fecha_modificacion = Set(Some(Utc::now()));
+        area.fecha_actualizacion = Set(Some(Utc::now()));
         let area_actualizada = area.update(&db).await?;
         Ok(area_actualizada)
     }
 
-    pub async fn cambiar_estado(&self, id: i32, estado: bool) -> Result<AreaConocimientoModel, AppError> {
+    pub async fn cambiar_estado(
+        &self,
+        id: i32,
+        estado: bool,
+    ) -> Result<AreaConocimientoModel, AppError> {
         let db = self.connection();
         let area = AreaConocimiento::find_by_id(id)
             .one(&db)
@@ -142,7 +150,7 @@ impl AreaConocimientoService {
 
         let mut area: area_conocimiento::ActiveModel = area.into();
         area.estado = Set(estado);
-        area.fecha_modificacion = Set(Some(Utc::now()));
+        area.fecha_actualizacion = Set(Some(Utc::now()));
 
         let area_actualizada = area.update(&db).await?;
         Ok(area_actualizada)
@@ -161,7 +169,10 @@ impl AreaConocimientoService {
 
 impl FromRef<AppState> for AreaConocimientoService {
     fn from_ref(state: &AppState) -> Self {
-        let executor = state.db.clone().expect("Database connection is not available");
+        let executor = state
+            .db
+            .clone()
+            .expect("Database connection is not available");
         AreaConocimientoService::new(executor)
     }
 }

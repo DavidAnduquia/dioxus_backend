@@ -6,9 +6,7 @@ use axum::{
 use serde::Deserialize;
 
 use crate::{
-    middleware::auth::AuthUser,
-    models::AppState,
-    services::matricula_service::MatriculaService,
+    middleware::auth::AuthUser, models::AppState, services::matricula_service::MatriculaService,
     utils::errors::AppError,
 };
 
@@ -19,10 +17,16 @@ pub struct MatriculaPayload {
 }
 
 pub async fn matricular_estudiante(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<MatriculaPayload>,
-) -> Result<(StatusCode, Json<crate::models::historial_curso_estudiante::Model>), AppError> {
+) -> Result<
+    (
+        StatusCode,
+        Json<crate::models::historial_curso_estudiante::Model>,
+    ),
+    AppError,
+> {
     let service = MatriculaService::from_ref(&state);
     let matricula = service
         .matricular_estudiante(payload.estudiante_id, payload.curso_id)
@@ -31,7 +35,7 @@ pub async fn matricular_estudiante(
 }
 
 pub async fn desmatricular_estudiante(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path((estudiante_id, curso_id)): Path<(i32, i32)>,
 ) -> Result<Json<crate::models::historial_curso_estudiante::Model>, AppError> {
@@ -43,14 +47,12 @@ pub async fn desmatricular_estudiante(
 }
 
 pub async fn obtener_matriculas_estudiante(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(estudiante_id): Path<i32>,
 ) -> Result<Json<Vec<crate::models::historial_curso_estudiante::Model>>, AppError> {
     let service = MatriculaService::from_ref(&state);
-    let matriculas = service
-        .obtener_matriculas_estudiante(estudiante_id)
-        .await?;
+    let matriculas = service.obtener_matriculas_estudiante(estudiante_id).await?;
     Ok(Json(matriculas))
 }
 
@@ -60,8 +62,6 @@ pub async fn obtener_matriculas_curso(
     Path(curso_id): Path<i32>,
 ) -> Result<Json<Vec<crate::models::historial_curso_estudiante::Model>>, AppError> {
     let service = MatriculaService::from_ref(&state);
-    let matriculas = service
-        .obtener_matriculas_curso(curso_id)
-        .await?;
+    let matriculas = service.obtener_matriculas_curso(curso_id).await?;
     Ok(Json(matriculas))
 }

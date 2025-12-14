@@ -1,10 +1,15 @@
 use axum::extract::FromRef;
-use chrono::{DateTime, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set, Order};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, Order,
+    QueryFilter, QueryOrder, Set,
+};
 
 use crate::{
     database::DbExecutor,
-    models::{unidad::{self, Entity as Unidad, Model as UnidadModel}, AppState},
+    models::{
+        unidad::{self, Entity as Unidad, Model as UnidadModel},
+        AppState,
+    },
     utils::errors::AppError,
 };
 use serde::{Deserialize, Serialize};
@@ -46,7 +51,6 @@ impl UnidadService {
         }
 
         let db = self.connection();
-        let ahora = Utc::now();
 
         let unidad = unidad::ActiveModel {
             id: Set(0),
@@ -55,8 +59,6 @@ impl UnidadService {
             descripcion: Set(nueva_unidad.descripcion),
             orden: Set(nueva_unidad.orden),
             visible: Set(nueva_unidad.visible),
-            created_at: Set(Some(ahora)),
-            updated_at: Set(Some(ahora)),
         };
 
         let unidad_creada = unidad.insert(&db).await?;
@@ -77,7 +79,11 @@ impl UnidadService {
         Unidad::find_by_id(id).one(&db).await
     }
 
-    pub async fn actualizar_unidad(&self, id: i32, datos: ActualizarUnidad) -> Result<UnidadModel, AppError> {
+    pub async fn actualizar_unidad(
+        &self,
+        id: i32,
+        datos: ActualizarUnidad,
+    ) -> Result<UnidadModel, AppError> {
         let db = self.connection();
         let unidad = Unidad::find_by_id(id)
             .one(&db)
@@ -85,11 +91,12 @@ impl UnidadService {
             .ok_or_else(|| AppError::NotFound("Unidad no encontrada".into()))?;
 
         let mut unidad: unidad::ActiveModel = unidad.into();
-        let ahora = Utc::now();
 
         if let Some(nombre) = datos.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
+                return Err(AppError::BadRequest(
+                    "El nombre no puede estar vacío".into(),
+                ));
             }
             unidad.nombre = Set(nombre);
         }
@@ -106,7 +113,6 @@ impl UnidadService {
             unidad.visible = Set(visible);
         }
 
-        unidad.updated_at = Set(Some(ahora));
         let unidad_actualizada = unidad.update(&db).await?;
         Ok(unidad_actualizada)
     }
@@ -125,7 +131,10 @@ impl UnidadService {
 
 impl FromRef<AppState> for UnidadService {
     fn from_ref(state: &AppState) -> Self {
-        let executor = state.db.clone().expect("Database connection is not available");
+        let executor = state
+            .db
+            .clone()
+            .expect("Database connection is not available");
         UnidadService::new(executor)
     }
 }

@@ -1,11 +1,13 @@
+use chrono::{FixedOffset, TimeZone, Utc};
+use std::collections::VecDeque;
+use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::sync::{Mutex, OnceLock};
-use std::collections::VecDeque;
-use chrono::{FixedOffset, TimeZone, Utc};
-use tracing_subscriber::{fmt::writer::MakeWriter, layer::SubscriberExt, EnvFilter, fmt, util::SubscriberInitExt};
-use std::env;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+use tracing_subscriber::{
+    fmt, fmt::writer::MakeWriter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 
 // Zona horaria de Bogotá (UTC-5)
 struct BogotaTime;
@@ -20,7 +22,7 @@ impl tracing_subscriber::fmt::time::FormatTime for BogotaTime {
 
 // Sin buffer: escritura directa al archivo (mínimo consumo de memoria)
 const MAX_BUFFER_SIZE: usize = 1024; // 1KB mínimo
-const FLUSH_THRESHOLD: usize = 256;  // Flush cada 256 bytes (inmediato)
+const FLUSH_THRESHOLD: usize = 256; // Flush cada 256 bytes (inmediato)
 
 struct CircularLogBuffer {
     buffer: VecDeque<u8>,
@@ -68,7 +70,7 @@ impl CircularLogBuffer {
         // Zona horaria de Bogotá (UTC-5)
         let bogota_tz = FixedOffset::west_opt(5 * 3600).unwrap();
         let now_bogota = bogota_tz.from_utc_datetime(&chrono::Utc::now().naive_utc());
-        
+
         // Nombre del archivo con fecha actual (zona horaria Bogotá)
         let log_file = format!(
             "{}/{}.{}.log",
@@ -105,24 +107,20 @@ struct BufferedWriter;
 impl Write for BufferedWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         match LOG_BUFFER.get() {
-            Some(buffer) => {
-                match buffer.lock() {
-                    Ok(mut b) => b.write_to_buffer(buf),
-                    Err(_) => std::io::stderr().write(buf),
-                }
-            }
+            Some(buffer) => match buffer.lock() {
+                Ok(mut b) => b.write_to_buffer(buf),
+                Err(_) => std::io::stderr().write(buf),
+            },
             None => std::io::stderr().write(buf),
         }
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
         match LOG_BUFFER.get() {
-            Some(buffer) => {
-                match buffer.lock() {
-                    Ok(mut b) => b.flush_to_disk(),
-                    Err(_) => std::io::stderr().flush(),
-                }
-            }
+            Some(buffer) => match buffer.lock() {
+                Ok(mut b) => b.flush_to_disk(),
+                Err(_) => std::io::stderr().flush(),
+            },
             None => std::io::stderr().flush(),
         }
     }
@@ -144,19 +142,19 @@ impl<'a> MakeWriter<'a> for BufferedMakeWriter {
 
 /// Inicializa el sistema de logging SOLO a consola (sin archivo)
 /// Esto reduce el consumo de memoria significativamente (~50KB menos)
-/// 
+///
 /// # Returns
 /// * `Result<(), Box<dyn std::error::Error>>` - Ok si se inicializó correctamente
-/// 
+///
 /// # Uso
 /// Ideal para desarrollo donde no necesitas persistencia de logs
 #[allow(dead_code)]
 pub fn init_logger_console_only() -> Result<(), Box<dyn std::error::Error>> {
     static INIT: OnceLock<()> = OnceLock::new();
-    
+
     INIT.get_or_init(|| {
-        let env_filter = EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| EnvFilter::new("info"));
+        let env_filter =
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
         // Solo consola, sin archivo ni buffer, con hora Bogotá
         tracing_subscriber::registry()
@@ -169,14 +167,14 @@ pub fn init_logger_console_only() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Inicializa el sistema de logging con buffer circular de 20KB
-/// 
+///
 /// # Arguments
 /// * `log_dir` - Directorio donde se guardarán los logs (relativo al ejecutable)
 /// * `app_name` - Nombre de la aplicación para los archivos de log
-/// 
+///
 /// # Returns
 /// * `Result<(), Box<dyn std::error::Error>>` - Ok si se inicializó correctamente
-/// 
+///
 /// # Optimizaciones
 /// - Buffer circular de 20KB máximo en memoria
 /// - Escritura lazy (flush cada 4KB o al cerrar)
@@ -184,9 +182,12 @@ pub fn init_logger_console_only() -> Result<(), Box<dyn std::error::Error>> {
 /// - Logs se persisten correctamente entre reinicios
 /// - Siempre usa directorio del ejecutable en ejecución para logs
 /// - Calcula path una sola vez para máxima eficiencia
-pub fn init_logger(log_dir: &'static str, app_name: &'static str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn init_logger(
+    log_dir: &'static str,
+    app_name: &'static str,
+) -> Result<(), Box<dyn std::error::Error>> {
     static INIT: OnceLock<()> = OnceLock::new();
-    
+
     INIT.get_or_init(|| {
         // Calcular path una sola vez y convertir a &'static str para eficiencia
         let exe_path = env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
@@ -195,15 +196,20 @@ pub fn init_logger(log_dir: &'static str, app_name: &'static str) -> Result<(), 
         let adjusted_log_dir: &'static str = Box::leak(logs_dir_str.into_boxed_str());
 
         // Inicializar buffer circular (lazy, solo si se usa)
-        LOG_BUFFER.get_or_init(|| Mutex::new(CircularLogBuffer::new(adjusted_log_dir.to_string(), app_name)));
+        LOG_BUFFER.get_or_init(|| {
+            Mutex::new(CircularLogBuffer::new(
+                adjusted_log_dir.to_string(),
+                app_name,
+            ))
+        });
 
         // Configurar filtro de niveles
-        let env_filter = EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| EnvFilter::new("info"));
-        
+        let env_filter =
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
         // Escritor con buffer circular
         let file_writer = BufferedMakeWriter::new();
-        
+
         // Capa para archivo: SIN colores, formato compacto, hora Bogotá
         let file_layer = fmt::layer()
             .with_writer(file_writer)
@@ -211,13 +217,13 @@ pub fn init_logger(log_dir: &'static str, app_name: &'static str) -> Result<(), 
             .with_target(false)
             .with_timer(BogotaTime)
             .compact();
-        
+
         // Capa para consola: CON colores, hora Bogotá
         let stdout_layer = fmt::layer()
             .with_ansi(true)
             .with_timer(BogotaTime)
             .compact();
-        
+
         // Configurar suscriptor
         tracing_subscriber::registry()
             .with(env_filter)
@@ -225,7 +231,7 @@ pub fn init_logger(log_dir: &'static str, app_name: &'static str) -> Result<(), 
             .with(stdout_layer)
             .init();
     });
-    
+
     Ok(())
 }
 
@@ -241,7 +247,7 @@ pub fn flush_logs() -> std::io::Result<()> {
 }
 
 /// Limpia los archivos de log antiguos
-/// 
+///
 /// # Arguments
 /// * `log_dir` - Directorio de logs
 /// * `max_age_days` - Número máximo de días de antigüedad para conservar los logs

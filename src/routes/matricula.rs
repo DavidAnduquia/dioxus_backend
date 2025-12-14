@@ -1,13 +1,13 @@
-use axum::{routing::{get, post}, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 
 use crate::{handlers::matricula, models::AppState};
 
 pub fn matricula_routes() -> Router<AppState> {
     Router::new()
-        .route(
-            "/api/matriculas",
-            post(matricula::matricular_estudiante),
-        )
+        .route("/api/matriculas", post(matricula::matricular_estudiante))
         .route(
             "/api/matriculas/{estudiante_id}/{curso_id}",
             post(matricula::desmatricular_estudiante),

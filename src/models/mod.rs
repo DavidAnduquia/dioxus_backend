@@ -13,6 +13,7 @@ pub mod area_conocimiento;
 pub mod calificacion;
 pub mod contenido_plantilla;
 pub mod contenido_transversal;
+pub mod contenido_unidad;
 pub mod curso;
 pub mod entrega;
 pub mod evaluacion_calificacion;
@@ -24,6 +25,7 @@ pub mod historial_curso_estudiante;
 pub mod modulo;
 pub mod modulo_archivo;
 pub mod notificacion;
+pub mod personalizacion_portafolio;
 pub mod plantilla_curso;
 pub mod portafolio;
 pub mod portafolio_contenido;
@@ -33,9 +35,6 @@ pub mod rol;
 pub mod tema;
 pub mod unidad;
 pub mod usuario;
-pub mod webinar;
-pub mod webinar_modulo;
-pub mod webinar_progreso_estudiante;
 
 // Application state shared across handlers
 #[derive(Clone)]
@@ -57,7 +56,8 @@ impl AppState {
             format!(
                 "Database connection is not available (environment: {:?})",
                 self.config.environment
-            ).into(),
+            )
+            .into(),
         )
     }
 
@@ -68,13 +68,12 @@ impl AppState {
             .map(|executor| executor.pool())
             .ok_or_else(|| self.missing_db_error())
     }
-
 }
 
 // User models
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
 pub struct User {
-    pub id: i32,  // Cambiado de Uuid a i32 para coincidir con BD
+    pub id: i32, // Cambiado de Uuid a i32 para coincidir con BD
     pub email: String,
     #[serde(skip_serializing)]
     pub password_hash: String,
@@ -109,7 +108,7 @@ pub struct AuthResponse {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
     #[schema(value_type = i32)]
-    pub id: i32,  // Cambiado de Uuid a i32
+    pub id: i32, // Cambiado de Uuid a i32
     pub email: String,
     pub name: String,
     #[schema(value_type = String, format = "date-time")]
@@ -126,7 +125,7 @@ impl From<User> for UserResponse {
         }
     }
 }
-  
+
 // JWT Claims
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Claims {

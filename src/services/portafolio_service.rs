@@ -1,10 +1,8 @@
-// use async_trait::async_trait;  // Ahora disponible por Cargo.toml
-use sea_orm_migration::async_trait;
 use chrono::Utc;
 use once_cell::sync::OnceCell;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set,
+    ModelTrait, Set,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -56,13 +54,13 @@ impl PortafolioService {
         // Validar campos obligatorios
         if nuevo_portafolio.titulo.trim().is_empty() {
             return Err(AppError::BadRequest(
-                "El título del portafolio es obligatorio".to_string(),
+                "El título del portafolio es obligatorio".into(),
             ));
         }
 
         if nuevo_portafolio.estado.trim().is_empty() {
             return Err(AppError::BadRequest(
-                "El estado del portafolio es obligatorio".to_string(),
+                "El estado del portafolio es obligatorio".into(),
             ));
         }
 
@@ -125,7 +123,7 @@ impl PortafolioService {
         let portafolio = Portafolio::find_by_id(id)
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Portafolio no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Portafolio no encontrado".into()))?;
 
         let mut portafolio: portafolio::ActiveModel = portafolio.into();
         let ahora = Utc::now();
@@ -133,7 +131,7 @@ impl PortafolioService {
         if let Some(titulo) = datos_actualizados.titulo {
             if titulo.trim().is_empty() {
                 return Err(AppError::BadRequest(
-                    "El título del portafolio no puede estar vacío".to_string(),
+                    "El título del portafolio no puede estar vacío".into(),
                 ));
             }
             portafolio.titulo = Set(titulo);
@@ -146,7 +144,7 @@ impl PortafolioService {
         if let Some(estado) = datos_actualizados.estado {
             if estado.trim().is_empty() {
                 return Err(AppError::BadRequest(
-                    "El estado del portafolio no puede estar vacío".to_string(),
+                    "El estado del portafolio no puede estar vacío".into(),
                 ));
             }
             portafolio.estado = Set(estado);
@@ -164,56 +162,9 @@ impl PortafolioService {
         let portafolio = Portafolio::find_by_id(id)
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Portafolio no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Portafolio no encontrado".into()))?;
 
         let _ = portafolio.delete(&self.db).await?;
         Ok(())
-    }
-}
-
-/*
-#[async_trait]
-impl crate::traits::service::CrudService<PortafolioModel> for PortafolioService {
-    async fn get_all(&self) -> Result<Vec<PortafolioModel>, AppError> {
-        Portafolio::find()
-            .order_by_desc(portafolio::Column::FechaActualizacion)
-            .all(&self.db)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn get_by_id(&self, id: i32) -> Result<Option<PortafolioModel>, AppError> {
-        self.obtener_portafolio_por_id(id).await.map_err(Into::into)
-    }
-
-    async fn create(&self, data: PortafolioModel) -> Result<PortafolioModel, AppError> {
-        self.crear_portafolio(NuevoPortafolio {
-            estudiante_id: data.estudiante_id,
-            curso_id: data.curso_id,
-            titulo: data.titulo,
-            descripcion: data.descripcion,
-            estado: data.estado,
-        })
-        .await
-    }
-
-    async fn update(
-        &self,
-        id: i32,
-        data: PortafolioModel,
-    ) -> Result<PortafolioModel, AppError> {
-        self.actualizar_portafolio(
-            id,
-            ActualizarPortafolio {
-                titulo: Some(data.titulo),
-                descripcion: data.descripcion,
-                estado: Some(data.estado),
-            },
-        )
-        .await
-    }
-
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
-        self.eliminar_portafolio(id).await
     }
 }

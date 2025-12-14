@@ -1,9 +1,9 @@
 use once_cell::sync::OnceCell;
-use sea_orm::{DatabaseConnection, EntityTrait, DbErr, ActiveModelTrait, Set};
 use sea_orm::ModelTrait;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use std::sync::Arc;
 
-use crate::models::rol::{Entity as RolEntity, Model as RolModel, ActiveModel as RolActiveModel};
+use crate::models::rol::{ActiveModel as RolActiveModel, Entity as RolEntity, Model as RolModel};
 
 static ROL_SERVICE: OnceCell<Arc<RolService>> = OnceCell::new();
 
@@ -15,21 +15,15 @@ pub struct RolService {
 impl RolService {
     /// Obtiene la instancia global del servicio, inicializándola si es necesario
     pub fn global(conn: &DatabaseConnection) -> &'static Arc<Self> {
-        ROL_SERVICE.get_or_init(|| {
-            Arc::new(Self { conn: conn.clone() })
-        })
+        ROL_SERVICE.get_or_init(|| Arc::new(Self { conn: conn.clone() }))
     }
 
     pub async fn find_by_id(&self, id: i32) -> Result<Option<RolModel>, DbErr> {
-        RolEntity::find_by_id(id)
-            .one(&self.conn)
-            .await
+        RolEntity::find_by_id(id).one(&self.conn).await
     }
 
     pub async fn obtener_roles(&self) -> Result<Vec<RolModel>, DbErr> {
-        RolEntity::find()
-            .all(&self.conn)
-            .await
+        RolEntity::find().all(&self.conn).await
     }
 
     pub async fn create(&self, nombre: String) -> Result<RolModel, DbErr> {
@@ -58,6 +52,6 @@ impl RolService {
             .ok_or(DbErr::RecordNotFound("Rol no encontrado".into()))?;
 
         rol.delete(&self.conn).await?;
-        Ok(1)  // Asumiendo que siempre se elimina 1 registro
+        Ok(1) // Asumiendo que siempre se elimina 1 registro
     }
 }

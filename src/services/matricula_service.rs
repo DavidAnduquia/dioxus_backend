@@ -1,6 +1,9 @@
 use axum::extract::FromRef;
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set, Order, PaginatorTrait};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Order, PaginatorTrait,
+    QueryFilter, QueryOrder, Set,
+};
 
 use crate::{
     database::DbExecutor,
@@ -22,7 +25,6 @@ impl MatriculaService {
     pub fn new(db: DbExecutor) -> Self {
         Self { db }
     }
-
 
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()
@@ -109,7 +111,10 @@ impl MatriculaService {
         let db = self.connection();
         let matriculas = Historial::find()
             .filter(historial_curso_estudiante::Column::EstudianteId.eq(estudiante_id))
-            .order_by(historial_curso_estudiante::Column::FechaInscripcion, Order::Asc)
+            .order_by(
+                historial_curso_estudiante::Column::FechaInscripcion,
+                Order::Asc,
+            )
             .all(&db)
             .await?;
 
@@ -122,48 +127,74 @@ impl MatriculaService {
     ) -> Result<Vec<HistorialModel>, AppError> {
         let db = self.connection();
 
-        println!("🔍 Debug: Método obtener_matriculas_curso llamado para curso_id: {}", curso_id);
+        println!(
+            "🔍 Debug: Método obtener_matriculas_curso llamado para curso_id: {}",
+            curso_id
+        );
 
         // Verificar primero si existen matrículas
         let matriculas_count = Historial::find()
             .filter(historial_curso_estudiante::Column::CursoId.eq(curso_id))
             .count(&db)
             .await?;
-        
-        println!("📊 Encontradas {} matrículas en total para curso {}", matriculas_count, curso_id);
+
+        println!(
+            "📊 Encontradas {} matrículas en total para curso {}",
+            matriculas_count, curso_id
+        );
 
         // Obtener matrículas con información del estudiante usando JOIN
         let matriculas_con_estudiantes = Historial::find()
             .filter(historial_curso_estudiante::Column::CursoId.eq(curso_id))
             .find_also_related(Usuario)
-            .order_by(historial_curso_estudiante::Column::FechaInscripcion, Order::Asc)
+            .order_by(
+                historial_curso_estudiante::Column::FechaInscripcion,
+                Order::Asc,
+            )
             .all(&db)
             .await?;
 
         // Debug: Verificar si los usuarios existen
-        let estudiante_ids: Vec<i32> = matriculas_con_estudiantes.iter()
+        let estudiante_ids: Vec<i32> = matriculas_con_estudiantes
+            .iter()
             .map(|(matricula, _)| matricula.estudiante_id)
             .collect();
-        
+
         println!("👥 IDs de estudiantes encontrados: {:?}", estudiante_ids);
-        
+
         for estudiante_id in &estudiante_ids {
             if let Some(usuario) = Usuario::find_by_id(*estudiante_id).one(&db).await? {
-                println!("✅ Usuario {} existe: {} ({})", estudiante_id, usuario.nombre, usuario.correo);
+                println!(
+                    "✅ Usuario {} existe: {} ({})",
+                    estudiante_id, usuario.nombre, usuario.correo
+                );
             } else {
                 println!("❌ Usuario {} NO existe en tabla usuarios", estudiante_id);
             }
         }
 
-        println!("🔍 Debug JOIN: Encontradas {} matrículas con JOIN para curso {}", matriculas_con_estudiantes.len(), curso_id);
+        println!(
+            "🔍 Debug JOIN: Encontradas {} matrículas con JOIN para curso {}",
+            matriculas_con_estudiantes.len(),
+            curso_id
+        );
         for (matricula, estudiante_opt) in &matriculas_con_estudiantes {
-            println!("📝 Matrícula ID: {}, Estudiante ID: {}, Usuario encontrado: {}", 
-                matricula.id, matricula.estudiante_id, estudiante_opt.is_some());
+            println!(
+                "📝 Matrícula ID: {}, Estudiante ID: {}, Usuario encontrado: {}",
+                matricula.id,
+                matricula.estudiante_id,
+                estudiante_opt.is_some()
+            );
             if let Some(estudiante) = estudiante_opt {
-                println!("👤 Usuario datos: ID={}, Nombre='{}', Correo='{}'", 
-                    estudiante.id, estudiante.nombre, estudiante.correo);
+                println!(
+                    "👤 Usuario datos: ID={}, Nombre='{}', Correo='{}'",
+                    estudiante.id, estudiante.nombre, estudiante.correo
+                );
             } else {
-                println!("❌ Usuario NO encontrado para estudiante_id: {}", matricula.estudiante_id);
+                println!(
+                    "❌ Usuario NO encontrado para estudiante_id: {}",
+                    matricula.estudiante_id
+                );
             }
         }
 
@@ -188,7 +219,10 @@ impl MatriculaService {
 
 impl FromRef<AppState> for MatriculaService {
     fn from_ref(state: &AppState) -> Self {
-        let executor = state.db.clone().expect("Database connection is not available");
+        let executor = state
+            .db
+            .clone()
+            .expect("Database connection is not available");
         MatriculaService::new(executor)
     }
 }

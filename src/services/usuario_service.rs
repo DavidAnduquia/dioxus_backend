@@ -1,17 +1,17 @@
-use chrono::{DateTime, Utc};
 use axum::extract::FromRef;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
-    Set, IntoActiveModel,
-};
-use tracing::instrument;
+use chrono::{DateTime, Utc};
 use once_cell::sync::OnceCell;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    Set,
+};
 use std::sync::Arc;
+use tracing::instrument;
 
 use crate::{
     models::{
-        usuario::{self, Entity as Usuario, Model as UsuarioModel, NewUsuario, UpdateUsuario},
         rol,
+        usuario::{self, Entity as Usuario, Model as UsuarioModel, NewUsuario, UpdateUsuario},
         AppState,
     },
     utils::errors::AppError,
@@ -20,7 +20,9 @@ use crate::{
 // Validación básica de email sin dependencia extra
 fn is_valid_email(email: &str) -> bool {
     let parts: Vec<&str> = email.split('@').collect();
-    if parts.len() != 2 { return false; }
+    if parts.len() != 2 {
+        return false;
+    }
     let (local, domain) = (parts[0], parts[1]);
     !local.is_empty() && domain.contains('.') && !domain.starts_with('.') && !domain.ends_with('.')
 }
@@ -35,16 +37,14 @@ pub struct UsuarioService {
 impl UsuarioService {
     /// Obtiene la instancia global del servicio, inicializándola si es necesario
     pub fn global(conn: &DatabaseConnection) -> &'static Arc<Self> {
-        USUARIO_SERVICE.get_or_init(|| {
-            Arc::new(Self { db: conn.clone() })
-        })
+        USUARIO_SERVICE.get_or_init(|| Arc::new(Self { db: conn.clone() }))
     }
 
     /// Obtiene una conexión del pool de manera eficiente
     async fn get_connection(&self) -> DatabaseConnection {
         self.db.clone()
     }
-    
+
     // No necesitamos el método begin_transaction separado ya que usamos begin() directamente
 
     // Iniciar sesión
@@ -55,7 +55,7 @@ impl UsuarioService {
         contrasena: &str,
     ) -> Result<UsuarioModel, AppError> {
         let db = self.get_connection().await;
-        
+
         // Buscar usuario
         let usuario = Usuario::find()
             .filter(
@@ -71,8 +71,8 @@ impl UsuarioService {
         // Actualizar última conexión
         let now = Utc::now();
         let mut usuario = usuario.into_active_model();
-        usuario.fecha_actualizacion = Set(Some(now));
-        usuario.fecha_ultima_conexion = Set(Some(now));
+        usuario.fecha_actualizacion = Set(now);
+        usuario.fecha_ultima_conexion = Set(now);
         let usuario = usuario.update(&db).await?;
 
         Ok(usuario)
@@ -82,7 +82,7 @@ impl UsuarioService {
     #[instrument(skip(self))]
     pub async fn logout_usuario(&self, id: i32) -> Result<UsuarioModel, AppError> {
         let db = self.get_connection().await;
-        
+
         let usuario = Usuario::find_by_id(id)
             .one(&db)
             .await?
@@ -91,8 +91,8 @@ impl UsuarioService {
         // Actualizar última conexión
         let now = Utc::now();
         let mut usuario = usuario.into_active_model();
-        usuario.fecha_actualizacion = Set(Some(now));
-        usuario.fecha_ultima_conexion = Set(Some(now));
+        usuario.fecha_actualizacion = Set(now);
+        usuario.fecha_ultima_conexion = Set(now);
         let usuario = usuario.update(&db).await?;
 
         Ok(usuario)
@@ -102,7 +102,7 @@ impl UsuarioService {
     #[instrument(skip(self))]
     pub async fn obtener_usuarios(&self) -> Result<Vec<usuario::UsuarioConRol>, AppError> {
         let db = self.get_connection().await;
-        
+
         let usuarios = Usuario::find()
             .find_also_related(rol::Entity)
             .all(&db)
@@ -145,9 +145,7 @@ impl UsuarioService {
         }
 
         if nuevo_usuario.contrasena.trim().is_empty() {
-            return Err(AppError::BadRequest(
-                "La contraseña es obligatoria".into(),
-            ));
+            return Err(AppError::BadRequest("La contraseña es obligatoria".into()));
         }
 
         if nuevo_usuario.contrasena.len() < 6 {
@@ -168,19 +166,17 @@ impl UsuarioService {
             ));
         }
 
-        // Si hay documento_nit, verificar que no esté en uso
-        if let Some(documento) = &nuevo_usuario.documento_nit {
-            if !documento.trim().is_empty() {
-                let existe_documento = Usuario::find()
-                    .filter(usuario::Column::DocumentoNit.eq(documento))
-                    .one(&db)
-                    .await?;
+        // Verificar que el documento no esté en uso
+        if !nuevo_usuario.documento_nit.trim().is_empty() {
+            let existe_documento = Usuario::find()
+                .filter(usuario::Column::DocumentoNit.eq(&nuevo_usuario.documento_nit))
+                .one(&db)
+                .await?;
 
-                if existe_documento.is_some() {
-                    return Err(AppError::Conflict(
-                        "Ya existe un usuario con este documento".into(),
-                    ));
-                }
+            if existe_documento.is_some() {
+                return Err(AppError::Conflict(
+                    "Ya existe un usuario con este documento".into(),
+                ));
             }
         }
 
@@ -200,15 +196,14 @@ impl UsuarioService {
             semestre: Set(nuevo_usuario.semestre),
             genero: Set(nuevo_usuario.genero),
             fecha_nacimiento: Set(fecha_nacimiento),
-            estado: Set(Some(nuevo_usuario.estado.unwrap_or(true))),
-            token_primer_ingreso: Set(
-                nuevo_usuario
-                    .token_primer_ingreso
-                    .and_then(|fecha| fecha.parse::<chrono::NaiveDateTime>().ok())
-                    .map(|dt| DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc)),
-            ),
-            fecha_creacion: Set(Some(Utc::now())),
-            fecha_actualizacion: Set(Some(Utc::now())),
+            estado: Set(nuevo_usuario.estado),
+            token_primer_ingreso: Set(nuevo_usuario
+                .token_primer_ingreso
+                .and_then(|fecha| fecha.parse::<chrono::NaiveDateTime>().ok())
+                .map(|dt| DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc))),
+            fecha_creacion: Set(Utc::now()),
+            fecha_actualizacion: Set(Utc::now()),
+            fecha_ultima_conexion: Set(Utc::now()),
             ..Default::default()
         };
 
@@ -232,7 +227,9 @@ impl UsuarioService {
 
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
+                return Err(AppError::BadRequest(
+                    "El nombre no puede estar vacío".into(),
+                ));
             }
             usuario.nombre = Set(nombre);
         }
@@ -273,7 +270,7 @@ impl UsuarioService {
                     ));
                 }
             }
-            usuario.documento_nit = Set(Some(documento));
+            usuario.documento_nit = Set(documento);
         }
 
         if let Some(contrasena) = datos_actualizados.contrasena {
@@ -290,10 +287,10 @@ impl UsuarioService {
         }
 
         if let Some(estado) = datos_actualizados.estado {
-            usuario.estado = Set(Some(estado));
+            usuario.estado = Set(estado);
         }
 
-        usuario.fecha_actualizacion = Set(Some(Utc::now()));
+        usuario.fecha_actualizacion = Set(Utc::now());
         let usuario = usuario.update(&db).await?;
 
         Ok(usuario)

@@ -46,7 +46,9 @@ pub async fn obtener_unidad(
         .map_err(AppError::from)?
     {
         Some(unidad) => Ok(Json(unidad)),
-        None => Err(AppError::NotFound(format!("Unidad {} no encontrada", id).into())),
+        None => Err(AppError::NotFound(
+            format!("Unidad {} no encontrada", id).into(),
+        )),
     }
 }
 

@@ -1,10 +1,16 @@
 use axum::extract::FromRef;
-use chrono::{DateTime, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set, Order};
+use chrono::Utc;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, Order,
+    QueryFilter, QueryOrder, Set,
+};
 
 use crate::{
     database::DbExecutor,
-    models::{tema::{self, Entity as Tema, Model as TemaModel}, AppState},
+    models::{
+        tema::{self, Entity as Tema, Model as TemaModel},
+        AppState,
+    },
     utils::errors::AppError,
 };
 use serde::{Deserialize, Serialize};
@@ -77,7 +83,11 @@ impl TemaService {
         Tema::find_by_id(id).one(&db).await
     }
 
-    pub async fn actualizar_tema(&self, id: i32, datos: ActualizarTema) -> Result<TemaModel, AppError> {
+    pub async fn actualizar_tema(
+        &self,
+        id: i32,
+        datos: ActualizarTema,
+    ) -> Result<TemaModel, AppError> {
         let db = self.connection();
         let tema = Tema::find_by_id(id)
             .one(&db)
@@ -89,7 +99,9 @@ impl TemaService {
 
         if let Some(nombre) = datos.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
+                return Err(AppError::BadRequest(
+                    "El nombre no puede estar vacío".into(),
+                ));
             }
             tema.nombre = Set(nombre);
         }
@@ -125,7 +137,10 @@ impl TemaService {
 
 impl FromRef<AppState> for TemaService {
     fn from_ref(state: &AppState) -> Self {
-        let executor = state.db.clone().expect("Database connection is not available");
+        let executor = state
+            .db
+            .clone()
+            .expect("Database connection is not available");
         TemaService::new(executor)
     }
 }

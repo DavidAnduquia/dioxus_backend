@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "temas")]
@@ -12,7 +12,9 @@ pub struct Model {
     pub descripcion: Option<String>,
     pub orden: i32,
     pub visible: bool,
+    #[sea_orm(column_name = "fecha_creacion")]
     pub created_at: Option<DateTime<Utc>>,
+    #[sea_orm(column_name = "fecha_actualizacion")]
     pub updated_at: Option<DateTime<Utc>>,
 }
 

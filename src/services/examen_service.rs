@@ -1,12 +1,16 @@
 use axum::extract::FromRef;
 use chrono::{DateTime, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter,
+    Set,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::database::DbExecutor;
-use crate::models::{AppState, examen::{self, Entity as Examen, Model as ExamenModel}};
+use crate::models::{
+    examen::{self, Entity as Examen, Model as ExamenModel},
+    AppState,
+};
 use crate::utils::errors::AppError;
 
 #[derive(Debug, Clone)]
@@ -44,26 +48,28 @@ impl ExamenService {
         Self { db }
     }
 
-
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()
     }
 
-    pub async fn crear_examen(
-        &self,
-        nuevo_examen: NuevoExamen,
-    ) -> Result<ExamenModel, AppError> {
+    pub async fn crear_examen(&self, nuevo_examen: NuevoExamen) -> Result<ExamenModel, AppError> {
         if nuevo_examen.nombre.trim().is_empty() {
             return Err(AppError::BadRequest("El nombre es obligatorio".into()));
         }
         if nuevo_examen.fecha_inicio >= nuevo_examen.fecha_fin {
-            return Err(AppError::BadRequest("La fecha de inicio debe ser anterior a la fecha de fin".into()));
+            return Err(AppError::BadRequest(
+                "La fecha de inicio debe ser anterior a la fecha de fin".into(),
+            ));
         }
         if nuevo_examen.duracion_minutos <= 0 {
-            return Err(AppError::BadRequest("La duración debe ser mayor a 0".into()));
+            return Err(AppError::BadRequest(
+                "La duración debe ser mayor a 0".into(),
+            ));
         }
         if nuevo_examen.intentos_permitidos <= 0 {
-            return Err(AppError::BadRequest("Los intentos permitidos deben ser mayor a 0".into()));
+            return Err(AppError::BadRequest(
+                "Los intentos permitidos deben ser mayor a 0".into(),
+            ));
         }
 
         let db = self.connection();
@@ -98,10 +104,7 @@ impl ExamenService {
             .await
     }
 
-    pub async fn obtener_examen_por_id(
-        &self,
-        id: i32,
-    ) -> Result<Option<ExamenModel>, DbErr> {
+    pub async fn obtener_examen_por_id(&self, id: i32) -> Result<Option<ExamenModel>, DbErr> {
         let db = self.connection();
         Examen::find_by_id(id).one(&db).await
     }
@@ -122,7 +125,9 @@ impl ExamenService {
 
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
+                return Err(AppError::BadRequest(
+                    "El nombre no puede estar vacío".into(),
+                ));
             }
             examen.nombre = Set(nombre);
         }
@@ -175,7 +180,10 @@ impl ExamenService {
 
 impl FromRef<AppState> for ExamenService {
     fn from_ref(state: &AppState) -> Self {
-        let executor = state.db.clone().expect("Database connection is not available");
+        let executor = state
+            .db
+            .clone()
+            .expect("Database connection is not available");
         ExamenService::new(executor)
     }
 }

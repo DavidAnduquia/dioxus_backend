@@ -1,13 +1,14 @@
 use axum::extract::FromRef;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
-    QueryFilter, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
 };
 
 use crate::{
     database::DbExecutor,
     models::{
-        actividad::{self, Entity as Actividad, Model as ActividadModel, NewActividad, UpdateActividad},
+        actividad::{
+            self, Entity as Actividad, Model as ActividadModel, NewActividad, UpdateActividad,
+        },
         AppState,
     },
     utils::errors::AppError,
@@ -22,7 +23,6 @@ impl ActividadService {
     pub fn new(db: DbExecutor) -> Self {
         Self { db }
     }
-
 
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()
@@ -93,7 +93,9 @@ impl ActividadService {
         }
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
+                return Err(AppError::BadRequest(
+                    "El nombre no puede estar vacío".into(),
+                ));
             }
             actividad.nombre = Set(nombre);
         }
@@ -131,7 +133,10 @@ impl ActividadService {
 
 impl FromRef<AppState> for ActividadService {
     fn from_ref(state: &AppState) -> Self {
-        let executor = state.db.clone().expect("Database connection is not available");
+        let executor = state
+            .db
+            .clone()
+            .expect("Database connection is not available");
         ActividadService::new(executor)
     }
 }

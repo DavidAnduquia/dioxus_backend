@@ -1,13 +1,10 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use tower_http::cors::CorsLayer;
+use axum::http::{HeaderName, Method};
 use tower::ServiceBuilder;
-use tower_http::{
-    trace::TraceLayer,
-    limit::RequestBodyLimitLayer,
-};
-use axum::http::{Method, HeaderName};
+use tower_http::cors::CorsLayer;
+use tower_http::{limit::RequestBodyLimitLayer, trace::TraceLayer};
 mod config;
 mod database;
 mod handlers;
@@ -18,7 +15,7 @@ mod services;
 mod utils;
 
 use config::Config;
-use database::DbExecutor;
+use database::{seeder, DbExecutor, init_schema};
 use routes::create_app;
 
 #[tokio::main(worker_threads = 2)]
@@ -37,12 +34,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_pool = match database::create_pool(&config.database_url).await {
         Ok(pool) => {
             tracing::info!("✅ Base de datos conectada correctamente");
+
+            // Inicializar schema rustdema2 (search_path)
+            if let Err(e) = init_schema(&pool).await {
+                tracing::error!("❌ Error inicializando schema: {}", e);
+                return Err(e.into());
+            }
+
+            // Ejecutar migraciones iniciales para preparar tablas requeridas
+            if let Err(e) = seeder::run_migrations(&pool, &config.database_url).await {
+                tracing::error!("❌ Migraciones fallaron: {}", e);
+                return Err(e.into());
+            }
+
             Some(pool)
         }
         Err(e) => {
             tracing::error!("❌ No se pudo conectar a la base de datos: {}", e);
             tracing::warn!("⚠️  El servidor iniciará sin conexión a la base de datos");
-            tracing::warn!("⚠️  Las peticiones que requieran DB retornarán 503 Service Unavailable");
+            tracing::warn!(
+                "⚠️  Las peticiones que requieran DB retornarán 503 Service Unavailable"
+            );
             None
         }
     };
@@ -98,11 +110,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             HeaderName::from_static("accept"),
                             HeaderName::from_static("cache-control"),
                         ]) // Headers específicos para JWT
-                        .allow_credentials(true) // Permite credenciales (cookies, auth headers)
-                )
+                        .allow_credentials(true), // Permite credenciales (cookies, auth headers)
+                ),
         )
         // Métricas de performance (solo requests lentos)
-        .layer(axum::middleware::from_fn(middleware::memory::performance_metrics))
+        .layer(axum::middleware::from_fn(
+            middleware::memory::performance_metrics,
+        ))
         .with_state(app_state);
 
     // Run the server with graceful shutdown
@@ -157,32 +171,36 @@ async fn shutdown_signal() {
 /// /* Cambio nuevo */ Realiza limpieza ordenada de todos los recursos
 async fn perform_graceful_cleanup() {
     tracing::info!("🧹 Iniciando limpieza ordenada de recursos...");
-    
+
     // Optimizar memoria de SocketService antes del cierre
     let socket_service = services::socket_service::get_socket_service();
     let optimized = socket_service.optimize_memory().await;
     if optimized > 0 {
-        tracing::info!("🔧 Optimizados {} usuarios en SocketService durante shutdown", optimized);
+        tracing::info!(
+            "🔧 Optimizados {} usuarios en SocketService durante shutdown",
+            optimized
+        );
     }
-    
+
     // Mostrar métricas finales
     let socket_metrics = socket_service.get_memory_metrics().await;
-    tracing::info!("📊 Métricas finales SocketService: {} usuarios, {} conexiones, {} overhead", 
-        socket_metrics.total_users, 
+    tracing::info!(
+        "📊 Métricas finales SocketService: {} usuarios, {} conexiones, {} overhead",
+        socket_metrics.total_users,
         socket_metrics.total_connections,
         socket_metrics.memory_overhead
     );
-    
+
     // /* Cambio nuevo */ Limpiar cron jobs activos
     let jobs_cleaned = services::cron_service::cleanup_all_jobs();
     if jobs_cleaned > 0 {
         tracing::info!("🛑 {} cron jobs limpiados durante shutdown", jobs_cleaned);
     }
-    
+
     // Flush final de logs antes de cerrar
     if let Err(e) = utils::logger::flush_logs() {
         eprintln!("⚠️  Error al hacer flush de logs: {}", e);
     }
-    
+
     tracing::info!("✅ Limpieza ordenada completada");
 }

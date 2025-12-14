@@ -12,7 +12,7 @@ use crate::{
 };
 
 pub async fn crear_modulo(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<NuevoModulo>,
 ) -> Result<(StatusCode, Json<ModuloModel>), AppError> {
@@ -22,7 +22,7 @@ pub async fn crear_modulo(
 }
 
 pub async fn listar_modulos_por_curso(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(curso_id): Path<i32>,
 ) -> Result<Json<Vec<ModuloModel>>, AppError> {
@@ -32,19 +32,25 @@ pub async fn listar_modulos_por_curso(
 }
 
 pub async fn obtener_modulo(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<ModuloModel>, AppError> {
     let service = ModuloService::from_ref(&state);
-    match service.obtener_modulo_por_id(id).await.map_err(AppError::from)? {
+    match service
+        .obtener_modulo_por_id(id)
+        .await
+        .map_err(AppError::from)?
+    {
         Some(modulo) => Ok(Json(modulo)),
-        None => Err(AppError::NotFound(format!("Módulo {} no encontrado", id).into())),
+        None => Err(AppError::NotFound(
+            format!("Módulo {} no encontrado", id).into(),
+        )),
     }
 }
 
 pub async fn actualizar_modulo(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<ActualizarModulo>,
@@ -55,7 +61,7 @@ pub async fn actualizar_modulo(
 }
 
 pub async fn eliminar_modulo(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<StatusCode, AppError> {

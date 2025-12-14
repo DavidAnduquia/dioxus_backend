@@ -2,18 +2,18 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::time::Duration;
 
 /// Crea un pool de conexiones a PostgreSQL con reintentos
-/// 
+///
 /// # Argumentos
 /// * `database_url` - URL de conexión a la base de datos
-/// 
+///
 /// # Errores
 /// Retorna un error si no se puede conectar después de varios intentos
 pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
     const MAX_RETRIES: u32 = 3;
     const RETRY_DELAY_SECS: u64 = 2;
-    
+
     tracing::info!("🔌 Intentando conectar a la base de datos...");
-    
+
     for attempt in 1..=MAX_RETRIES {
         match try_create_pool(database_url).await {
             Ok(pool) => {
@@ -22,11 +22,12 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
             }
             Err(e) => {
                 let error_msg = e.to_string();
-                
+
                 if attempt < MAX_RETRIES {
-                    if error_msg.contains("Connection refused") || 
-                       error_msg.contains("could not connect") ||
-                       error_msg.contains("timed out") {
+                    if error_msg.contains("Connection refused")
+                        || error_msg.contains("could not connect")
+                        || error_msg.contains("timed out")
+                    {
                         tracing::warn!(
                             "⚠️  Intento {}/{} falló: {}. Reintentando en {} segundos...",
                             attempt,
@@ -51,18 +52,18 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
             }
         }
     }
-    
+
     unreachable!()
 }
 
 /// Intenta crear un pool de conexiones sin reintentos
 async fn try_create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
     PgPoolOptions::new()
-        .max_connections(2)  // Reducido a 2 para optimizar memoria en reposo
-        .min_connections(0)  // 0 conexiones mínimas = máxima optimización en idle
+        .max_connections(2) // Reducido a 2 para optimizar memoria en reposo
+        .min_connections(0) // 0 conexiones mínimas = máxima optimización en idle
         .acquire_timeout(Duration::from_secs(5))
-        .idle_timeout(Some(Duration::from_secs(60)))   // 1 minuto idle, luego cierra
-        .max_lifetime(Some(Duration::from_secs(300)))  // 5 minutos máximo
+        .idle_timeout(Some(Duration::from_secs(60))) // 1 minuto idle, luego cierra
+        .max_lifetime(Some(Duration::from_secs(300))) // 5 minutos máximo
         .test_before_acquire(true)
         .connect(database_url)
         .await
@@ -71,15 +72,15 @@ async fn try_create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
 #[allow(dead_code)]
 pub async fn init_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Create schema if it doesn't exist
-    sqlx::query("CREATE SCHEMA IF NOT EXISTS rustdema")
+    sqlx::query("CREATE SCHEMA IF NOT EXISTS rustdema2")
         .execute(pool)
         .await?;
 
     // Set search_path to use the schema
-    sqlx::query("SET search_path TO rustdema, public")
+    sqlx::query("SET search_path TO rustdema2, public")
         .execute(pool)
         .await?;
 
-    tracing::info!("Schema rustdema initialized");
+    tracing::info!("Schema rustdema2 initialized");
     Ok(())
 }

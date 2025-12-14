@@ -598,7 +598,7 @@ update
 
 CREATE TABLE rustdema2.unidades (
 	id serial4 NOT NULL,
-	modulo_id int4 NOT NULL,
+	tema_id int4 NOT NULL,
 	nombre varchar(200) NOT NULL,
 	descripcion text NULL,
 	orden int4 DEFAULT 0 NOT NULL,
@@ -606,9 +606,9 @@ CREATE TABLE rustdema2.unidades (
 	fecha_creacion timestamptz DEFAULT now() NULL,
 	fecha_actualizacion timestamptz DEFAULT now() NULL,
 	CONSTRAINT unidades_pkey PRIMARY KEY (id),
-	CONSTRAINT unidades_modulo_id_fkey FOREIGN KEY (modulo_id) REFERENCES rustdema2.modulos(id) ON DELETE CASCADE
+	CONSTRAINT unidades_tema_id_fkey FOREIGN KEY (tema_id) REFERENCES rustdema2.temas(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_unidades_modulo ON rustdema2.unidades USING btree (modulo_id);
+CREATE INDEX idx_unidades_tema ON rustdema2.unidades USING btree (tema_id);
 
 -- Table Triggers
 
@@ -1080,21 +1080,23 @@ CREATE INDEX idx_webinar_progreso_estudiante ON rustdema2.webinar_progreso_estud
 CREATE TABLE rustdema2.contenidos_unidad (
 	id serial4 NOT NULL,
 	unidad_id int4 NOT NULL,
-	tipo varchar(50) NOT NULL,
+	tipo_contenido varchar(50) NOT NULL,
 	titulo varchar(200) NOT NULL,
 	descripcion text NULL,
 	orden int4 DEFAULT 0 NOT NULL,
-	texto_largo text NULL,
-	archivo_url text NULL,
-	archivo_tipo varchar(100) NULL,
-	video_url text NULL,
+	contenido text NULL,
+	url text NULL,
+	visible bool DEFAULT true NOT NULL,
+	obligatorio bool DEFAULT false NOT NULL,
+	puntos int4 NULL,
+	fecha_limite timestamptz NULL,
+	duracion_estimada int4 NULL,
 	examen_id int4 NULL,
 	entrega_id int4 NULL,
-	activo bool DEFAULT true NOT NULL,
 	fecha_creacion timestamptz DEFAULT now() NULL,
 	fecha_actualizacion timestamptz DEFAULT now() NULL,
 	CONSTRAINT contenidos_unidad_pkey PRIMARY KEY (id),
-	CONSTRAINT contenidos_unidad_tipo_check CHECK (((tipo)::text = ANY ((ARRAY['texto'::character varying, 'archivo'::character varying, 'video'::character varying, 'quiz'::character varying, 'actividad_entrega'::character varying])::text[]))),
+	CONSTRAINT contenidos_unidad_tipo_check CHECK (((tipo_contenido)::text = ANY ((ARRAY['texto'::character varying, 'documento'::character varying, 'video'::character varying, 'enlace'::character varying, 'examen'::character varying, 'entrega'::character varying, 'actividad'::character varying])::text[]))),
 	CONSTRAINT contenidos_unidad_entrega_id_fkey FOREIGN KEY (entrega_id) REFERENCES rustdema2.entregas(id) ON DELETE CASCADE,
 	CONSTRAINT contenidos_unidad_unidad_id_fkey FOREIGN KEY (unidad_id) REFERENCES rustdema2.unidades(id) ON DELETE CASCADE
 );
@@ -1118,3 +1120,95 @@ CREATE TABLE rustdema2.evaluaciones_calificacion (
 	CONSTRAINT evaluaciones_calificacion_estudiante_id_fkey FOREIGN KEY (estudiante_id) REFERENCES rustdema2.usuarios(id) ON DELETE CASCADE,
 	CONSTRAINT evaluaciones_calificacion_evaluacion_id_fkey FOREIGN KEY (evaluacion_id) REFERENCES rustdema2.evaluaciones_sesion(id) ON DELETE CASCADE
 );
+
+-- ============================================================================
+-- Datos iniciales del sistema (schema rustdema2)
+-- ============================================================================
+
+-- Insertar roles básicos
+INSERT INTO rustdema2.roles (nombre) VALUES
+    ('Coordinador'),
+    ('Profesor'),
+    ('Estudiante')
+ON CONFLICT (nombre) DO NOTHING;
+
+-- Insertar áreas de conocimiento de ejemplo
+INSERT INTO rustdema2.areas_conocimiento (nombre, descripcion, color_etiqueta, estado) VALUES
+    ('Matemáticas', 'Área de conocimiento enfocada en ciencias exactas y lógica matemática', '#FF6B6B', true),
+    ('Ciencias Naturales', 'Comprende física, química, biología y ciencias de la tierra', '#4ECDC4', true),
+    ('Ciencias Sociales', 'Historia, geografía, cívica y estudios sociales', '#45B7D1', true),
+    ('Lenguaje y Literatura', 'Comunicación, lectura comprensiva y expresión escrita', '#96CEB4', true),
+    ('Tecnología e Informática', 'Herramientas digitales y pensamiento computacional', '#FFEAA7', true),
+    ('Artes', 'Expresión artística, música, danza y teatro', '#DDA0DD', true),
+    ('Educación Física', 'Desarrollo corporal, deportes y actividad física', '#FFB74D', true)
+ON CONFLICT (nombre) DO NOTHING;
+
+-- Insertar usuarios de ejemplo
+INSERT INTO rustdema2.usuarios (
+    nombre,
+    documento_nit,
+    correo,
+    contrasena,
+    foto_url,
+    rol_id,
+    semestre,
+    genero,
+    fecha_nacimiento,
+    estado
+) VALUES
+    ('David A. Anduquia', '1234567890', 'david.anduquia@aulavirtual.com', 'admin123', 'https://randomuser.me/api/portraits/men/1.jpg', 1, NULL, 'M', '1980-01-01', true),
+    ('María García Profesora', 'PROF456', 'maria.garcia@aulavirtual.com', 'prof123', 'https://randomuser.me/api/portraits/women/1.jpg', 2, NULL, 'F', '1985-05-15', true),
+    ('Carlos López Estudiante', 'EST789', 'carlos.lopez@aulavirtual.com', 'est123', 'https://randomuser.me/api/portraits/men/2.jpg', 3, 5, 'M', '2000-10-20', true),
+    ('Ana Rodríguez Estudiante', 'EST790', 'ana.rodriguez@aulavirtual.com', 'est123', 'https://randomuser.me/api/portraits/women/2.jpg', 3, 5, 'F', '2001-03-15', true)
+ON CONFLICT (documento_nit) DO NOTHING;
+
+-- Insertar cursos de ejemplo
+INSERT INTO rustdema2.cursos (
+    nombre,
+    descripcion,
+    fecha_inicio,
+    fecha_fin,
+    prerequisito,
+    coordinador_id,
+    semestre,
+    periodo,
+    anio_pensum,
+    area_conocimiento_id
+) VALUES
+    ('Álgebra Básica', 'Fundamentos de álgebra para educación media', '2025-02-01', '2025-06-30', NULL, 1, 5, '2025-1', 2025, 1),
+    ('Física Mecánica', 'Introducción a la física mecánica clásica', '2025-02-01', '2025-06-30', 'Álgebra Básica', 1, 6, '2025-1', 2025, 2)
+ON CONFLICT DO NOTHING;
+
+-- Insertar módulos de ejemplo para el curso de Álgebra Básica
+INSERT INTO rustdema2.modulos (
+    curso_id, nombre, descripcion, orden, tipo, visible, obligatorio, duracion_estimada
+) VALUES
+    (1, 'Estructura del Curso', 'Organización y navegación del contenido del curso', 1, 'estructura_contenido', true, true, 30),
+    (1, 'Taller de Ejercicios', 'Práctica intensiva con ejercicios resueltos', 2, 'taller', true, false, 120),
+    (1, 'Evaluación Final', 'Examen final del módulo de álgebra básica', 3, 'evaluacion', true, true, 90)
+ON CONFLICT DO NOTHING;
+
+-- Insertar temas de ejemplo
+INSERT INTO rustdema2.temas (
+    modulo_id, nombre, descripcion, orden, visible
+) VALUES
+    (1, 'Introducción a la Programación', 'Conceptos básicos y fundamentos de la programación', 1, true),
+    (1, 'Estructuras de Control', 'Control del flujo de ejecución', 2, true)
+ON CONFLICT DO NOTHING;
+
+-- Insertar unidades de ejemplo
+INSERT INTO rustdema2.unidades (
+    tema_id, nombre, descripcion, orden, visible
+) VALUES
+    (1, 'Algoritmos y Lógica', 'Entendiendo el pensamiento algorítmico', 1, true),
+    (1, 'Variables y Tipos de Datos', 'Conceptos fundamentales de datos', 2, true),
+    (2, 'Condicionales', 'Estructuras if-else y switch', 1, true)
+ON CONFLICT DO NOTHING;
+
+-- Insertar webinars de ejemplo
+INSERT INTO rustdema2.webinars (
+    curso_id, titulo, descripcion, progreso, estado, duracion, modulos
+) VALUES
+    (1, 'Introducción a la Programación Web', 'Aprende los fundamentos del desarrollo web con ejemplos prácticos', 75, 'en_progreso', '45 min', 8),
+    (2, 'Bases de Datos Relacionales', 'Explora el diseño y gestión de bases de datos con SQL', 100, 'completado', '60 min', 12)
+ON CONFLICT DO NOTHING;

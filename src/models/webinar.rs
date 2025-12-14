@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "webinars")]
@@ -10,10 +10,10 @@ pub struct Model {
     pub curso_id: i32,
     pub titulo: String,
     pub descripcion: Option<String>,
-    pub progreso: i32, // porcentaje 0-100
-    pub estado: String, // 'no_iniciado' | 'en_progreso' | 'completado'
+    pub progreso: i32,            // porcentaje 0-100
+    pub estado: String,           // 'no_iniciado' | 'en_progreso' | 'completado'
     pub duracion: Option<String>, // ej: "45 min", "1.5 horas"
-    pub modulos: i32, // número de módulos
+    pub modulos: i32,             // número de módulos
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
@@ -36,10 +36,12 @@ impl RelationTrait for Relation {
                 .from(Column::Id)
                 .to(super::webinar_modulo::Column::WebinarId)
                 .into(),
-            Self::ProgresoEstudiantes => Entity::has_many(super::webinar_progreso_estudiante::Entity)
-                .from(Column::Id)
-                .to(super::webinar_progreso_estudiante::Column::WebinarId)
-                .into(),
+            Self::ProgresoEstudiantes => {
+                Entity::has_many(super::webinar_progreso_estudiante::Entity)
+                    .from(Column::Id)
+                    .to(super::webinar_progreso_estudiante::Column::WebinarId)
+                    .into()
+            }
         }
     }
 }

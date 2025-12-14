@@ -23,18 +23,14 @@ pub struct HealthResponse {
         (status = 503, description = "Service unavailable", body = ApiResponse<HealthResponse>)
     )
 )]
-pub async fn health_check(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn health_check(State(state): State<AppState>) -> impl IntoResponse {
     let db_status = if state.is_db_available() {
         // Intentar hacer una query simple para verificar la conexión
         match state.get_db() {
-            Ok(pool) => {
-                match sqlx::query("SELECT 1").fetch_one(pool).await {
-                    Ok(_) => "connected",
-                    Err(_) => "error",
-                }
-            }
+            Ok(pool) => match sqlx::query("SELECT 1").fetch_one(pool).await {
+                Ok(_) => "connected",
+                Err(_) => "error",
+            },
             Err(_) => "disconnected",
         }
     } else {
@@ -72,17 +68,13 @@ pub async fn health_check(
         (status = 503, description = "Server is not ready")
     )
 )]
-pub async fn readiness_check(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn readiness_check(State(state): State<AppState>) -> impl IntoResponse {
     if state.is_db_available() {
         match state.get_db() {
-            Ok(pool) => {
-                match sqlx::query("SELECT 1").fetch_one(pool).await {
-                    Ok(_) => (StatusCode::OK, "Ready"),
-                    Err(_) => (StatusCode::SERVICE_UNAVAILABLE, "Database not ready"),
-                }
-            }
+            Ok(pool) => match sqlx::query("SELECT 1").fetch_one(pool).await {
+                Ok(_) => (StatusCode::OK, "Ready"),
+                Err(_) => (StatusCode::SERVICE_UNAVAILABLE, "Database not ready"),
+            },
             Err(_) => (StatusCode::SERVICE_UNAVAILABLE, "Database not available"),
         }
     } else {

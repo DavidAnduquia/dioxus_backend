@@ -22,8 +22,5 @@ pub fn curso_routes() -> Router<AppState> {
             "/api/areas-conocimiento/{area_id}/cursos",
             get(curso::cursos_por_area_y_periodo),
         )
-        .route(
-            "/api/cursos/{id}/aula",
-            get(curso::aula_por_curso),
-        )
+        .route("/api/cursos/{id}/aula", get(curso::aula_por_curso))
 }

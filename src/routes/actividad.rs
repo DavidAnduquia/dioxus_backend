@@ -1,5 +1,5 @@
-use axum::{ Router};
-use axum::routing::{get};
+use axum::routing::get;
+use axum::Router;
 
 use crate::{handlers::actividad, models::AppState};
 

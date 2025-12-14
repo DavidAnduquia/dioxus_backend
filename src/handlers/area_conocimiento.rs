@@ -6,15 +6,8 @@ use axum::{
 
 use crate::{
     middleware::auth::AuthUser,
-    models::{
-        area_conocimiento::Model as AreaConocimientoModel,
-        AppState,
-    },
-    services::area_conocimiento_service::{
-        ActualizarArea,
-        AreaConocimientoService,
-        NuevaArea,
-    },
+    models::{area_conocimiento::Model as AreaConocimientoModel, AppState},
+    services::area_conocimiento_service::{ActualizarArea, AreaConocimientoService, NuevaArea},
     utils::errors::AppError,
 };
 
@@ -24,7 +17,7 @@ pub struct CambiarEstadoPayload {
 }
 
 pub async fn listar_areas(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
 ) -> Result<Json<Vec<AreaConocimientoModel>>, AppError> {
     let service = AreaConocimientoService::from_ref(&state);
@@ -33,7 +26,7 @@ pub async fn listar_areas(
 }
 
 pub async fn listar_areas_activas(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
 ) -> Result<Json<Vec<AreaConocimientoModel>>, AppError> {
     let service = AreaConocimientoService::from_ref(&state);
@@ -42,22 +35,21 @@ pub async fn listar_areas_activas(
 }
 
 pub async fn obtener_area(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<AreaConocimientoModel>, AppError> {
     let service = AreaConocimientoService::from_ref(&state);
     match service.obtener_area_por_id(id).await? {
         Some(area) => Ok(Json(area)),
-        None => Err(AppError::NotFound(format!(
-            "Área de conocimiento con id {} no encontrada",
-            id
-        ).into())),
+        None => Err(AppError::NotFound(
+            format!("Área de conocimiento con id {} no encontrada", id).into(),
+        )),
     }
 }
 
 pub async fn crear_area(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<NuevaArea>,
 ) -> Result<(StatusCode, Json<AreaConocimientoModel>), AppError> {
@@ -67,7 +59,7 @@ pub async fn crear_area(
 }
 
 pub async fn actualizar_area(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<ActualizarArea>,
@@ -78,7 +70,7 @@ pub async fn actualizar_area(
 }
 
 pub async fn cambiar_estado(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<CambiarEstadoPayload>,
@@ -89,7 +81,7 @@ pub async fn cambiar_estado(
 }
 
 pub async fn eliminar_area(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<StatusCode, AppError> {

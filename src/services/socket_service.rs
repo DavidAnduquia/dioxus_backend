@@ -1,7 +1,7 @@
-use std::sync::OnceLock;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::OnceLock;
 use tokio::sync::RwLock;
 
 /// Estructura para manejar conexiones de WebSocket
@@ -41,11 +41,15 @@ impl SocketService {
                 connections.remove(&user_id);
             }
         }
-        tracing::info!("👤 Usuario {} desconectado del socket {}", user_id, socket_id);
+        tracing::info!(
+            "👤 Usuario {} desconectado del socket {}",
+            user_id,
+            socket_id
+        );
     }
 
     /// Emite una notificación a un usuario específico
-    /// Equivalente a emitNotificationToUser en TypeScript 
+    /// Equivalente a emitNotificationToUser en TypeScript
     pub async fn emit_notification_to_user(&self, user_id: i64, notification: Value) {
         let connections = self.connections.read().await;
         if let Some(sockets) = connections.get(&user_id) {
@@ -65,7 +69,7 @@ impl SocketService {
     }
 
     /// Emite una notificación a múltiples usuarios
-    /// Equivalente a emitNotificationToUsers en TypeScript 
+    /// Equivalente a emitNotificationToUsers en TypeScript
     pub async fn emit_notification_to_users(&self, user_ids: Vec<i64>, notification: Value) {
         for user_id in user_ids {
             self.emit_notification_to_user(user_id, notification.clone())
@@ -74,12 +78,12 @@ impl SocketService {
     }
 
     /// Emite una notificación broadcast a todos los usuarios conectados
-    /// Equivalente a emitNotificationBroadcast en TypeScript 
+    /// Equivalente a emitNotificationBroadcast en TypeScript
     pub async fn emit_notification_broadcast(&self, notification: Value) {
         let connections = self.connections.read().await;
         let total_users = connections.len();
         tracing::info!("📢 Broadcast de notificación a {} usuarios", total_users);
-        
+
         for (user_id, sockets) in connections.iter() {
             for socket_id in sockets {
                 tracing::debug!(
@@ -93,13 +97,13 @@ impl SocketService {
     }
 
     /// Verifica si el servicio de sockets está disponible
-    /// Equivalente a isAvailable en TypeScript 
+    /// Equivalente a isAvailable en TypeScript
     pub async fn is_available(&self) -> bool {
         true // En Rust siempre está disponible si la instancia existe
     }
 
     /// Obtiene información de conexión
-    /// Equivalente a getConnectionInfo en TypeScript 
+    /// Equivalente a getConnectionInfo en TypeScript
     pub async fn get_connection_info(&self) -> ConnectionInfo {
         let connections = self.connections.read().await;
         let connected_users = connections.len();
@@ -114,7 +118,7 @@ impl SocketService {
         }
     }
 
-    /// Obtiene el número total de conexiones activas 
+    /// Obtiene el número total de conexiones activas
     pub async fn get_total_connections(&self) -> usize {
         let connections = self.connections.read().await;
         connections.values().map(|v| v.len()).sum()
@@ -127,7 +131,7 @@ impl SocketService {
         let total_connections = connections.values().map(|v| v.len()).sum();
         let total_capacity: usize = connections.values().map(|v| v.capacity()).sum();
         let memory_overhead = total_capacity.saturating_sub(total_connections);
-        
+
         SocketMemoryMetrics {
             total_users,
             total_connections,
@@ -141,21 +145,28 @@ impl SocketService {
     pub async fn optimize_memory(&self) -> usize {
         let mut connections = self.connections.write().await;
         let mut optimized_count = 0;
-        
+
         for (user_id, sockets) in connections.iter_mut() {
             let overhead = sockets.capacity().saturating_sub(sockets.len());
             // Solo optimizar si hay más del 50% de capacidad no utilizada y al menos 10 slots vacíos
             if overhead > sockets.len() && overhead >= 10 {
                 sockets.shrink_to_fit();
                 optimized_count += 1;
-                tracing::debug!("🔧 Optimizada memoria para usuario {}: {} slots liberados", user_id, overhead);
+                tracing::debug!(
+                    "🔧 Optimizada memoria para usuario {}: {} slots liberados",
+                    user_id,
+                    overhead
+                );
             }
         }
-        
+
         if optimized_count > 0 {
-            tracing::info!("🔧 Optimización de memoria completada: {} usuarios optimizados", optimized_count);
+            tracing::info!(
+                "🔧 Optimización de memoria completada: {} usuarios optimizados",
+                optimized_count
+            );
         }
-        
+
         optimized_count
     }
 }

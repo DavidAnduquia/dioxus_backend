@@ -12,7 +12,7 @@ use crate::{
 };
 
 pub async fn crear_examen(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<NuevoExamen>,
 ) -> Result<(StatusCode, Json<ExamenModel>), AppError> {
@@ -22,7 +22,7 @@ pub async fn crear_examen(
 }
 
 pub async fn listar_examenes_por_curso(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(curso_id): Path<i32>,
 ) -> Result<Json<Vec<ExamenModel>>, AppError> {
@@ -35,19 +35,25 @@ pub async fn listar_examenes_por_curso(
 }
 
 pub async fn obtener_examen(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<ExamenModel>, AppError> {
     let service = ExamenService::from_ref(&state);
-    match service.obtener_examen_por_id(id).await.map_err(AppError::from)? {
+    match service
+        .obtener_examen_por_id(id)
+        .await
+        .map_err(AppError::from)?
+    {
         Some(examen) => Ok(Json(examen)),
-        None => Err(AppError::NotFound(format!("Examen {} no encontrado", id).into())),
+        None => Err(AppError::NotFound(
+            format!("Examen {} no encontrado", id).into(),
+        )),
     }
 }
 
 pub async fn actualizar_examen(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<ActualizarExamen>,
@@ -58,7 +64,7 @@ pub async fn actualizar_examen(
 }
 
 pub async fn eliminar_examen(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<StatusCode, AppError> {

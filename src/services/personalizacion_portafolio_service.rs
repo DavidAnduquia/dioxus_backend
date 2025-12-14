@@ -1,8 +1,9 @@
-use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter,
+    Set,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
@@ -87,7 +88,7 @@ impl PersonalizacionPortafolioService {
         let personalizacion = PersonalizacionPortafolio::find_by_id(id)
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Personalización no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Personalización no encontrada".into()))?;
 
         let mut personalizacion: personalizacion_portafolio::ActiveModel = personalizacion.into();
         let ahora = Utc::now();
@@ -114,50 +115,9 @@ impl PersonalizacionPortafolioService {
         let personalizacion = PersonalizacionPortafolio::find_by_id(id)
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Personalización no encontrada".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Personalización no encontrada".into()))?;
 
         personalizacion.delete(&self.db).await?;
         Ok(())
-    }
-}
-
-#[async_trait]
-impl crate::traits::service::CrudService<PersonalizacionPortafolioModel> for PersonalizacionPortafolioService {
-    async fn get_all(&self) -> Result<Vec<PersonalizacionPortafolioModel>, AppError> {
-        self.obtener_personalizaciones().await.map_err(Into::into)
-    }
-
-    async fn get_by_id(&self, id: i32) -> Result<Option<PersonalizacionPortafolioModel>, AppError> {
-        self.obtener_personalizacion_por_id(id).await.map_err(Into::into)
-    }
-
-    async fn create(&self, data: PersonalizacionPortafolioModel) -> Result<PersonalizacionPortafolioModel, AppError> {
-        self.crear_personalizacion(NuevaPersonalizacion {
-            portafolio_id: data.portafolio_id,
-            estilos: data.estilos,
-            orden_componentes: data.orden_componentes,
-            privacidad_componentes: data.privacidad_componentes,
-        })
-        .await
-    }
-
-    async fn update(
-        &self,
-        id: i32,
-        data: PersonalizacionPortafolioModel,
-    ) -> Result<PersonalizacionPortafolioModel, AppError> {
-        self.actualizar_personalizacion(
-            id,
-            ActualizarPersonalizacion {
-                estilos: data.estilos,
-                orden_componentes: data.orden_componentes,
-                privacidad_componentes: data.privacidad_componentes,
-            },
-        )
-        .await
-    }
-
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
-        self.eliminar_personalizacion(id).await
     }
 }

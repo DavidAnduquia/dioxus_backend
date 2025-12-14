@@ -1,4 +1,7 @@
-use axum::{routing::{get, patch}, Router};
+use axum::{
+    routing::{get, patch},
+    Router,
+};
 
 use crate::{handlers::area_conocimiento, models::AppState};
 

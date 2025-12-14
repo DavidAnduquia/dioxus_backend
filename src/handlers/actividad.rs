@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub async fn listar_actividades(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
 ) -> Result<Json<Vec<ActividadModel>>, AppError> {
     let service = ActividadService::from_ref(&state);
@@ -24,7 +24,7 @@ pub async fn listar_actividades(
 }
 
 pub async fn listar_actividades_por_curso(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(curso_id): Path<i32>,
 ) -> Result<Json<Vec<ActividadModel>>, AppError> {
@@ -34,19 +34,22 @@ pub async fn listar_actividades_por_curso(
 }
 
 pub async fn obtener_actividad(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<ActividadModel>, AppError> {
     let service = ActividadService::from_ref(&state);
     match service.obtener_actividad_por_id(id).await? {
         Some(actividad) => Ok(Json(actividad)),
-        None => Err(AppError::NotFound(std::borrow::Cow::Owned(format!("Actividad {} no encontrada", id)))),
+        None => Err(AppError::NotFound(std::borrow::Cow::Owned(format!(
+            "Actividad {} no encontrada",
+            id
+        )))),
     }
 }
 
 pub async fn crear_actividad(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<NewActividad>,
 ) -> Result<(StatusCode, Json<ActividadModel>), AppError> {
@@ -56,7 +59,7 @@ pub async fn crear_actividad(
 }
 
 pub async fn actualizar_actividad(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<UpdateActividad>,
@@ -67,7 +70,7 @@ pub async fn actualizar_actividad(
 }
 
 pub async fn eliminar_actividad(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<StatusCode, AppError> {

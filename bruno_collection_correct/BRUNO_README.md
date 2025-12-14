@@ -5,11 +5,60 @@ Esta colección tiene **AUTOMATIZACIÓN COMPLETA** con scripts de pre-request y 
 ## 🚀 **AUTOMATIZACIÓN IMPLEMENTADA**
 
 ### **1. JWT Token Automático** 🔐
-- **Pre-request script**: Agrega automáticamente `Authorization: Bearer {{JWT_TOKEN}}` a todas las requests
-- **Post-login script**: Guarda automáticamente el JWT token después del login
-- **Post-logout script**: Limpia automáticamente el token
+- **Script de colección pre-request**: Agrega automáticamente `Authorization: Bearer {{JWT_TOKEN}}` a TODAS las requests que requieren autenticación
+- **Script post-login**: Guarda automáticamente el JWT token después del login exitoso
+- **Validación automática**: Todas las rutas protegidas requieren JWT válido
 
-### **2. IDs Automáticos** 🆔
+### **2. Secuencia de Uso** 📋
+```bash
+# Opción 1: Login directo (recomendado)
+1. Ejecutar "Auth/Login User" → ✅ JWT_TOKEN guardado automáticamente
+
+# Opción 2: OAuth2 Token
+1. Ejecutar "Auth/OAuth2 Token" → ✅ JWT_TOKEN guardado automáticamente
+
+2. Todas las requests siguientes incluyen Authorization header automáticamente
+3. ¡Todo funciona sin configuración manual!
+```
+
+### **3. Métodos de Autenticación** 🔐
+
+#### **Login User** (Recomendado)
+- **Endpoint:** `POST /auth/login`
+- **Body:** JSON con email/password
+- **Respuesta:** `ApiResponse<AuthResponse>` con token en `data.token`
+
+#### **OAuth2 Token** 
+- **Endpoint:** `POST /auth/token`
+- **Body:** JSON con grant_type, username, password, scope
+- **Respuesta:** `OAuth2TokenResponse` con token en `access_token`
+
+### **4. Endpoints que requieren JWT** 🔒
+**TODOS** estos endpoints requieren autenticación JWT:
+
+| Categoría | Endpoints | Estado |
+|-----------|-----------|--------|
+| 👥 **Usuarios** | `GET/POST/PUT /api/usuarios/*` | ✅ Protegido |
+| 👔 **Roles** | `GET/POST/PUT/DELETE /api/roles/*` | ✅ Protegido |
+| 🏫 **Áreas** | `GET/POST/PUT/DELETE /api/areas-conocimiento/*` | ✅ Protegido |
+| 📚 **Cursos** | `GET/POST/PUT/DELETE /api/cursos/*` | ✅ Protegido |
+| 📝 **Exámenes** | `GET/POST/PUT/DELETE /api/examenes/*` | ✅ Protegido |
+| 📋 **Matrículas** | `GET/POST/DELETE /api/matriculas/*` | ✅ Protegido |
+| 📖 **Módulos** | `GET/POST/PUT/DELETE /api/modulos/*` | ✅ Protegido |
+| 🎯 **Actividades** | `GET/POST/PUT/DELETE /api/actividades/*` | ✅ Protegido |
+| 🔔 **Notificaciones** | `GET/POST/PUT /api/notificaciones/*` | ✅ Protegido |
+
+### **5. Endpoints públicos** 🌐
+Estos endpoints **NO** requieren JWT:
+- `GET /health` - Health check
+- `GET /ready` - Readiness check
+- `GET /live` - Liveness check
+- `POST /auth/register` - Registro
+- `POST /auth/login` - Login
+- `POST /auth/token` - OAuth2 token
+- `GET /swagger-ui/*` - Documentación
+
+### **6. IDs Automáticos** 🆔
 Los siguientes endpoints guardan automáticamente sus IDs creados:
 
 | Endpoint | Variable | Descripción |
@@ -23,7 +72,7 @@ Los siguientes endpoints guardan automáticamente sus IDs creados:
 | `POST /api/actividades` | `ACTIVIDAD_ID` | ID de la actividad creada |
 | `POST /api/examenes` | `EXAMEN_ID` | ID del examen creado |
 
-### **3. Debugging Automático** 🔍
+### **6. Debugging Automático** 🔍
 - **Logs en consola**: Cada request y response se registra automáticamente
 - **Manejo de errores**: Detecta automáticamente errores 401, 403, 404
 - **Sugerencias**: Te indica qué hacer cuando hay problemas
@@ -47,207 +96,71 @@ Los siguientes endpoints guardan automáticamente sus IDs creados:
 6. ¡Todo automatizado!
 ```
 
+### **Testing de Autenticación** 🧪
+```bash
+# 1. Probar endpoint público (debe funcionar sin token)
+GET /health → ✅ 200 OK
+
+# 2. Probar endpoint protegido sin token
+GET /api/usuarios → ❌ 401 Unauthorized
+
+# 3. Hacer login
+POST /auth/login → ✅ JWT_TOKEN guardado
+
+# 4. Probar endpoint protegido con token
+GET /api/usuarios → ✅ 200 OK con datos
+```
+
 ## 🛠️ **SCRIPTS IMPLEMENTADOS**
 
+### **Script de Colección Pre-request:**
 ```javascript
-vars:pre-request {
-  // Agrega Authorization header automáticamente
-  if (bru.getEnvVar("JWT_TOKEN")) {
-    req.setHeader("Authorization", "Bearer " + bru.getEnvVar("JWT_TOKEN"));
-    console.log("🔐 Header Authorization agregado automáticamente");
-  } else {
-    console.log("⚠️  No hay JWT_TOKEN configurado");
-  }
-
-  // Log de la request para debugging
-  console.log("📤 Enviando request a:", req.getUrl());
-}
-
-vars:post-response {
-  // Manejo automático de errores
-  console.log("📥 Response status:", res.getStatusCode());
-
-  if (res.getStatusCode() === 401) {
-    console.log("🚫 Error 401: Token expirado - Haz login nuevamente");
-  }
-  if (res.getStatusCode() === 403) {
-    console.log("🚫 Error 403: No tienes permisos");
-  }
-  if (res.getStatusCode() === 404) {
-    console.log("🚫 Error 404: Recurso no encontrado");
-  }
+// Agrega automáticamente Authorization header si JWT_TOKEN existe
+if (bru.getEnvVar("JWT_TOKEN")) {
+  req.setHeader("Authorization", "Bearer " + bru.getEnvVar("JWT_TOKEN"));
+  console.log("🔐 JWT Token agregado automáticamente");
 }
 ```
 
-### **Scripts por Endpoint**
-Cada endpoint de creación tiene su script `post-response` que guarda automáticamente el ID creado.
-
-## 📋 **ENDPOINTS CON AUTOMATIZACIÓN**
-
-### **🔐 Autenticación (100% Automatizada)**
-- ✅ Login User → Guarda JWT_TOKEN
-- ✅ Login User Alternative → Guarda JWT_TOKEN
-- ✅ Logout User → Limpia JWT_TOKEN
-
-### **👥 Gestión de Usuarios (90% Automatizada)**
-- ✅ Create User → Guarda USER_ID
-- ❌ Get User by ID → Usa {{USER_ID}}
-- ❌ Update User → Usa {{USER_ID}}
-- ❌ Logout User → Usa {{USER_ID}}
-
-### **🏷️ Roles (100% Automatizada)**
-- ✅ Create Role → Guarda ROLE_ID
-- ❌ Get/Update/Delete Role → Usan {{ROLE_ID}}
-
-### **📚 Áreas (100% Automatizada)**
-- ✅ Create Area → Guarda AREA_ID
-- ❌ Resto de operaciones → Usan {{AREA_ID}}
-
-### **🎓 Cursos (100% Automatizada)**
-- ✅ Create Curso → Guarda CURSO_ID
-- ❌ Resto de operaciones → Usan {{CURSO_ID}}
-
-### **📝 Exámenes (100% Automatizada)**
-- ✅ Create Examen → Guarda EXAMEN_ID
-- ❌ Resto de operaciones → Usan {{EXAMEN_ID}}
-
-### **📋 Matrículas (Manual)**
-- ❌ Todas requieren {{ESTUDIANTE_ID}} y {{CURSO_ID}}
-
-### **📚 Módulos (100% Automatizada)**
-- ✅ Create Modulo → Guarda MODULO_ID
-- ❌ Resto de operaciones → Usan {{MODULO_ID}}
-
-### **🎯 Actividades (100% Automatizada)**
-- ✅ Create Actividad → Guarda ACTIVIDAD_ID
-- ❌ Resto de operaciones → Usan {{ACTIVIDAD_ID}}
-
-### **🔔 Notificaciones (Manual)**
-- ❌ Requiere {{USER_ID}}
-
-### **📊 Métricas (Públicas)**
-- ✅ No requieren autenticación
-
-## 🚀 **¿CÓMO USAR?**
-
-### **Configuración Inicial:**
-1. Abrir colección en Bruno
-2. Seleccionar entorno "Local Development"
-3. Ejecutar "Auth/Login User"
-4. ✅ ¡Todo está automatizado!
-
-### **Creación de Contenido Completo:**
-```bash
-Login → Create Area → Create Curso → Create Modulo → Create Actividad
-✅ Todos los IDs se guardan automáticamente
-```
-
-## 🌍 **Variables de Entorno Completas**
-
-### **Entornos Disponibles:**
-- **Local Development:** Variables en MAYÚSCULAS `{{BASE_URL}}`
-- **Local Development (lowercase):** Variables en minúsculas `{{base_url}}`
-- **Production:** Variables en MAYÚSCULAS para producción
-
-### **18 Variables por Entorno:**
-
-#### **🔗 Configuración de Conexión:**
-- `BASE_URL` - URL completa (ej: `http://localhost:3030`)
-- `PROTOCOL` - Protocolo HTTP/HTTPS (ej: `http`, `https`)
-- `HOST` - Nombre del host (ej: `localhost`, `api.example.com`)
-- `PORT` - Puerto del servidor (ej: `3030`, vacío para HTTPS)
-
-#### **🔐 Autenticación:**
-- `JWT_TOKEN` - Token JWT (autoguardado después del login)
-
-#### **👥 IDs de Usuarios:**
-- `USER_ID` - ID de usuario (autoguardado al crear usuario)
-- `ESTUDIANTE_ID` - ID de estudiante (manual)
-- `PROFESSOR_ID` - ID de profesor (manual)
-
-#### **🏷️ Gestión de Roles:**
-- `ROLE_ID` - ID de rol (autoguardado al crear rol)
-
-#### **📚 Contenido Educativo:**
-- `AREA_ID` - ID de área de conocimiento (autoguardado)
-- `CURSO_ID` - ID de curso (autoguardado)
-- `MODULO_ID` - ID de módulo (autoguardado)
-- `ACTIVIDAD_ID` - ID de actividad (autoguardado)
-- `EXAMEN_ID` - ID de examen (autoguardado)
-
-#### **🔔 Comunicación:**
-- `NOTIFICACION_ID` - ID de notificación (manual)
-
-#### **📋 Plantillas:**
-- `PLANTILLA_ID` - ID de plantilla (manual)
-- `TEMPLATE_ID` - Alias de PLANTILLA_ID (manual)
-
-### **💡 Ejemplos de Uso:**
-
-#### **URLs Combinadas:**
-```bru
-url: {{PROTOCOL}}://{{HOST}}:{{PORT}}/api/users
-url: {{BASE_URL}}/api/users  # Equivalente
-```
-
-#### **Headers Dinámicos:**
+### **Script Post-login:**
 ```javascript
-// En scripts
-const fullUrl = bru.getEnvVar("PROTOCOL") + "://" +
-                bru.getEnvVar("HOST") + ":" +
-                bru.getEnvVar("PORT") + "/api/endpoint";
-```
-
-#### **Configuración por Entorno:**
-```json
-// Local Development
-{
-  "PROTOCOL": "http",
-  "HOST": "localhost",
-  "PORT": "3030"
-}
-
-// Production
-{
-  "PROTOCOL": "https",
-  "HOST": "api.example.com",
-  "PORT": ""
+// Extrae y guarda JWT token de respuesta
+const responseData = res.getBody();
+if (responseData.success && responseData.data.token) {
+  bru.setEnvVar("JWT_TOKEN", responseData.data.token);
+  console.log("✅ JWT Token guardado");
 }
 ```
 
-## 📋 **Referencia de Variables**
+## 🔧 **CONFIGURACIÓN TÉCNICA**
 
-**📄 Archivo: `collection.bru`** - Documentación completa en formato JavaScript object
-**📄 Archivo: `VARIABLES_REFERENCE.bru`** - Referencia rápida para copiar y pegar
+- **Base URL**: `http://localhost:3030`
+- **Autenticación**: JWT Bearer Token
+- **Content-Type**: `application/json`
+- **Variables**: Todas manejadas automáticamente
 
-### **Formato de Variables:**
-```javascript
-const variables = {
-  BASE_URL: "http://localhost:3030",
-  PROTOCOL: "http",
-  HOST: "localhost",
-  PORT: "3030",
-  JWT_TOKEN: "",
-  // ... todas las variables
-};
-```
+## 🚨 **TROUBLESHOOTING**
 
-## 📈 **ESTADÍSTICAS DE AUTOMATIZACIÓN**
+### **Error 401 Unauthorized:**
+- ✅ Asegúrate de ejecutar "Auth/Login User" primero
+- ✅ Verifica que JWT_TOKEN se guardó en consola
+- ✅ Confirma que el servidor esté ejecutándose en puerto 3030
 
-- **🔐 Autenticación**: 100% automatizada
-- **👥 Usuarios**: 90% automatizada
-- **🏷️ Roles**: 100% automatizada
-- **📚 Áreas**: 100% automatizada
-- **🎓 Cursos**: 100% automatizada
-- **📝 Exámenes**: 100% automatizada
-- **📋 Matrículas**: Manual (requiere IDs previos)
-- **📚 Módulos**: 100% automatizada
-- **🎯 Actividades**: 100% automatizada
-- **🔔 Notificaciones**: Manual
-- **📊 Métricas**: 100% (públicas)
+### **Error de conexión:**
+- ✅ Verifica que el servidor esté ejecutándose: `cargo run --release`
+- ✅ Confirma BASE_URL: `http://localhost:3030`
+- ✅ Revisa logs del servidor para errores
+
+### **Token expirado:**
+- ✅ Vuelve a ejecutar "Auth/Login User"
+- ✅ Los tokens expiran en 24 horas
 
 ---
 
-**¡Colección Bruno con automatización de nivel PRO!** 🚀🤖
+**¡Colección Bruno completamente automatizada con JWT!** 🔐🚀
 
-**Variables se guardan automáticamente con pre-request y post-request scripts.**usar!** 🎉
+**Características principales:**
+- ✅ **JWT automático** - Login guarda token, requests incluyen auth automáticamente
+- ✅ **IDs automáticos** - Crear recursos guarda IDs para requests siguientes
+- ✅ **Debugging integrado** - Logs y manejo de errores automático
+- ✅ **Testing completo** - Todas las rutas protegidas requieren JWT válido

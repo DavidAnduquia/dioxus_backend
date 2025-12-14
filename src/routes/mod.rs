@@ -6,28 +6,33 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use utoipa::OpenApi;
 use std::sync::OnceLock;
+use utoipa::OpenApi;
 
-use crate::{handlers, models::{AppState, Claims, User}};
+use crate::{
+    handlers,
+    models::{AppState, Claims, User},
+};
 
-pub mod roles;
-pub mod usuarios;
+pub mod actividad;
 pub mod area_conocimiento;
 pub mod curso;
 pub mod examen;
 pub mod matricula;
 pub mod modulo;
-pub mod actividad;
 pub mod notificacion;
+pub mod roles;
 pub mod storage; // Rutas para subida de archivos
 pub mod tema;
 pub mod unidad;
+pub mod usuarios;
+pub mod contenido_unidad;
+pub mod portafolio;
 
 #[derive(Deserialize)]
 struct OAuth2TokenRequest {
     grant_type: String,
-    email: String,  // Cambiar username por email para que coincida con el login
+    email: String, // Cambiar username por email para que coincida con el login
     password: String,
     #[serde(default)]
     scope: String,
@@ -59,8 +64,14 @@ pub fn create_routes() -> Router<AppState> {
         .route("/auth/validate-token", post(handlers::auth::validate_token))
         .route("/auth/token", post(oauth2_token_endpoint))
         .route("/ws", get(handlers::socket_manager::websocket_handler))
-        .route("/metrics/memory", get(handlers::metrics::get_memory_metrics))
-        .route("/metrics/optimize", post(handlers::metrics::optimize_memory))
+        .route(
+            "/metrics/memory",
+            get(handlers::metrics::get_memory_metrics),
+        )
+        .route(
+            "/metrics/optimize",
+            post(handlers::metrics::optimize_memory),
+        )
 }
 
 pub fn create_app() -> Router<AppState> {
@@ -77,12 +88,17 @@ pub fn create_app() -> Router<AppState> {
         .merge(notificacion::notificacion_routes())
         .merge(tema::tema_routes())
         .merge(unidad::unidad_routes())
+        .merge(contenido_unidad::contenido_unidad_routes())
+        .merge(portafolio::portafolio_routes())
         .merge(storage::storage_routes()) // Rutas para subida de archivos
         .route("/api-docs/openapi.json", get(serve_openapi_spec))
         .route("/swagger-ui", get(serve_swagger_ui))
         .route("/swagger-ui/", get(serve_swagger_ui))
         .route("/swagger-ui/index.html", get(serve_swagger_ui))
-        .route("/swagger-ui/oauth2-redirect.html", get(serve_oauth2_redirect))
+        .route(
+            "/swagger-ui/oauth2-redirect.html",
+            get(serve_oauth2_redirect),
+        )
 }
 
 #[derive(OpenApi)]
@@ -120,6 +136,25 @@ async fn oauth2_token_endpoint(
     Json(form): Json<OAuth2TokenRequest>,
 ) -> Result<Json<OAuth2TokenResponse>, Json<Value>> {
     use jsonwebtoken::{encode, Header};
+
+    if !form.client_id.is_empty() {
+        tracing::debug!("OAuth2 token request received for client_id={}", form.client_id);
+    }
+
+    if !form.client_secret.is_empty() {
+        tracing::trace!(
+            "OAuth2 token request included client_secret (len={})",
+            form.client_secret.len()
+        );
+    }
+
+    let resolved_scope = if !form.scope.is_empty() {
+        form.scope.clone()
+    } else if !form.client_id.is_empty() {
+        format!("client:{}:default", form.client_id)
+    } else {
+        "read write".to_string()
+    };
 
     if form.grant_type != "password" {
         return Err(Json(json!({
@@ -193,31 +228,27 @@ async fn oauth2_token_endpoint(
         let exp = now + chrono::Duration::hours(24);
 
         let claims = crate::models::Claims {
-            sub: test_user.id.to_string(),  // Usar ID real del usuario
+            sub: test_user.id.to_string(), // Usar ID real del usuario
             email: test_user.email.clone(),
             exp: exp.timestamp() as usize,
             iat: now.timestamp() as usize,
         };
 
-        let token = encode(
-            &Header::default(),
-            &claims,
-            state.jwt_encoding_key.as_ref(),
-        )
-        .map_err(|e| {
-            tracing::error!("Token generation error: {:?}", e);
-            Json(json!({
-                "error": "server_error",
-                "error_description": "Token generation failed"
-            }))
-        })?;
+        let token =
+            encode(&Header::default(), &claims, state.jwt_encoding_key.as_ref()).map_err(|e| {
+                tracing::error!("Token generation error: {:?}", e);
+                Json(json!({
+                    "error": "server_error",
+                    "error_description": "Token generation failed"
+                }))
+            })?;
 
         return Ok(Json(OAuth2TokenResponse {
             access_token: token,
             token_type: "Bearer".to_string(),
             expires_in: Some(86400),
             refresh_token: None,
-            scope: Some(form.scope),
+            scope: Some(resolved_scope),
         }));
     }
 
@@ -272,47 +303,37 @@ async fn oauth2_token_endpoint(
         iat: now.timestamp() as usize,
     };
 
-    let token = encode(
-        &Header::default(),
-        &claims,
-        state.jwt_encoding_key.as_ref(),
-    )
-    .map_err(|e| {
-        tracing::error!("Token generation error: {:?}", e);
-        Json(json!({
-            "error": "server_error",
-            "error_description": "Token generation failed"
-        }))
-    })?;
-
-    let scope = if !form.scope.is_empty() {
-        form.scope
-    } else {
-        "read write".to_string()
-    };
+    let token =
+        encode(&Header::default(), &claims, state.jwt_encoding_key.as_ref()).map_err(|e| {
+            tracing::error!("Token generation error: {:?}", e);
+            Json(json!({
+                "error": "server_error",
+                "error_description": "Token generation failed"
+            }))
+        })?;
 
     Ok(Json(OAuth2TokenResponse {
         access_token: token,
         token_type: "Bearer".to_string(),
         expires_in: Some(86400),
         refresh_token: None,
-        scope: Some(scope),
+        scope: Some(resolved_scope),
     }))
 }
 
 static OPENAPI_SPEC: OnceLock<String> = OnceLock::new();
 
 fn generate_openapi_spec() -> String {
-    use utoipa::openapi::security::{SecurityScheme, OAuth2, Flow, Password, Scopes};
+    use utoipa::openapi::security::{Flow, OAuth2, Password, Scopes, SecurityScheme};
 
     let mut openapi = ApiDoc::openapi();
     let components = openapi.components.get_or_insert_with(Default::default);
 
     components.add_security_scheme(
         "bearer_auth",
-        SecurityScheme::Http(
-            utoipa::openapi::security::Http::new(utoipa::openapi::security::HttpAuthScheme::Bearer)
-        ),
+        SecurityScheme::Http(utoipa::openapi::security::Http::new(
+            utoipa::openapi::security::HttpAuthScheme::Bearer,
+        )),
     );
 
     let password_flow = Password::new("/auth/token", Scopes::new());
@@ -321,7 +342,10 @@ fn generate_openapi_spec() -> String {
 
     let security = vec![
         utoipa::openapi::security::SecurityRequirement::new("bearer_auth", Vec::<String>::new()),
-        utoipa::openapi::security::SecurityRequirement::new("oauth2_password", Vec::<String>::new())
+        utoipa::openapi::security::SecurityRequirement::new(
+            "oauth2_password",
+            Vec::<String>::new(),
+        ),
     ];
 
     openapi.components = Some(components.clone());
@@ -338,7 +362,8 @@ async fn serve_openapi_spec() -> String {
 }
 
 async fn serve_swagger_ui() -> Html<&'static str> {
-    Html(r#"
+    Html(
+        r#"
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -372,11 +397,13 @@ async fn serve_swagger_ui() -> Html<&'static str> {
     </script>
 </body>
 </html>
-"#)
+"#,
+    )
 }
 
 async fn serve_oauth2_redirect() -> Html<&'static str> {
-    Html(r#"
+    Html(
+        r#"
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -386,5 +413,6 @@ async fn serve_oauth2_redirect() -> Html<&'static str> {
     <script src="https://unpkg.com/swagger-ui-dist@5.9.0/oauth2-redirect.html"></script>
 </body>
 </html>
-"#)
+"#,
+    )
 }

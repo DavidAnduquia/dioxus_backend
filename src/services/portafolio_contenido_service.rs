@@ -1,9 +1,9 @@
-use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
-    Set,
+    ModelTrait, Set,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::{
     models::portafolio_contenido::{self, Entity as PortafolioContenido, Model as PortafolioContenidoModel},
@@ -44,11 +44,11 @@ impl PortafolioContenidoService {
         nuevo_contenido: NuevoPortafolioContenido,
     ) -> Result<PortafolioContenidoModel, AppError> {
         if nuevo_contenido.titulo.trim().is_empty() {
-            return Err(AppError::BadRequest("El título es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El título es obligatorio".into()));
         }
 
         if nuevo_contenido.contenido.trim().is_empty() {
-            return Err(AppError::BadRequest("El contenido es obligatorio".to_string()));
+            return Err(AppError::BadRequest("El contenido es obligatorio".into()));
         }
 
         let ahora = Utc::now();
@@ -99,7 +99,7 @@ impl PortafolioContenidoService {
         let contenido = PortafolioContenido::find_by_id(id)
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Contenido no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Contenido no encontrado".into()))?;
 
         let mut contenido: portafolio_contenido::ActiveModel = contenido.into();
         let ahora = Utc::now();
@@ -110,7 +110,7 @@ impl PortafolioContenidoService {
 
         if let Some(titulo) = datos_actualizados.titulo {
             if titulo.trim().is_empty() {
-                return Err(AppError::BadRequest("El título no puede estar vacío".to_string()));
+                return Err(AppError::BadRequest("El título no puede estar vacío".into()));
             }
             contenido.titulo = Set(titulo);
         }
@@ -121,7 +121,7 @@ impl PortafolioContenidoService {
 
         if let Some(contenido_valor) = datos_actualizados.contenido {
             if contenido_valor.trim().is_empty() {
-                return Err(AppError::BadRequest("El contenido no puede estar vacío".to_string()));
+                return Err(AppError::BadRequest("El contenido no puede estar vacío".into()));
             }
             contenido.contenido = Set(contenido_valor);
         }
@@ -140,54 +140,9 @@ impl PortafolioContenidoService {
         let contenido = PortafolioContenido::find_by_id(id)
             .one(&self.db)
             .await?
-            .ok_or_else(|| AppError::NotFound("Contenido no encontrado".to_string()))?;
+            .ok_or_else(|| AppError::NotFound("Contenido no encontrado".into()))?;
 
         contenido.delete(&self.db).await?;
         Ok(())
-    }
-}
-
-#[async_trait]
-impl crate::traits::service::CrudService<PortafolioContenidoModel> for PortafolioContenidoService {
-    async fn get_all(&self) -> Result<Vec<PortafolioContenidoModel>, AppError> {
-        self.obtener_contenidos(None).await.map_err(Into::into)
-    }
-
-    async fn get_by_id(&self, id: i32) -> Result<Option<PortafolioContenidoModel>, AppError> {
-        self.obtener_contenido_por_id(id).await.map_err(Into::into)
-    }
-
-    async fn create(&self, data: PortafolioContenidoModel) -> Result<PortafolioContenidoModel, AppError> {
-        self.crear_contenido(NuevoPortafolioContenido {
-            portafolio_id: data.portafolio_id,
-            tipo_contenido: data.tipo_contenido,
-            titulo: data.titulo,
-            descripcion: data.descripcion,
-            contenido: data.contenido,
-            orden: data.orden,
-        })
-        .await
-    }
-
-    async fn update(
-        &self,
-        id: i32,
-        data: PortafolioContenidoModel,
-    ) -> Result<PortafolioContenidoModel, AppError> {
-        self.actualizar_contenido(
-            id,
-            ActualizarPortafolioContenido {
-                tipo_contenido: Some(data.tipo_contenido),
-                titulo: Some(data.titulo),
-                descripcion: data.descripcion,
-                contenido: Some(data.contenido),
-                orden: Some(data.orden),
-            },
-        )
-        .await
-    }
-
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
-        self.eliminar_contenido(id).await
     }
 }

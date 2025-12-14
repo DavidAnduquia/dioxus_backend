@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::env;
 
-#[derive(Debug, Clone, Deserialize)] 
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub database_url: String,
     pub port: u16,

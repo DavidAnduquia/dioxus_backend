@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use sea_orm::{entity::prelude::*, JsonValue};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "notificaciones")]
+#[sea_orm(table_name = "notificaciones", schema_name = "rustdema2")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
     pub id: i32,
@@ -14,7 +14,9 @@ pub struct Model {
     pub leida: bool,
     pub enlace: Option<String>,
     pub datos_adicionales: Option<JsonValue>,
+    #[sea_orm(column_name = "fecha_creacion")]
     pub created_at: Option<DateTime<Utc>>,
+    #[sea_orm(column_name = "fecha_actualizacion")]
     pub updated_at: Option<DateTime<Utc>>,
 }
 

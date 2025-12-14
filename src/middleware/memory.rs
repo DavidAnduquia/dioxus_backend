@@ -11,22 +11,18 @@
 // - Tokio console para debugging
 // - jemalloc como allocator global (ver Cargo.toml)
 
-use axum::{
-    extract::Request,
-    middleware::Next,
-    response::Response,
-};
+use axum::{extract::Request, middleware::Next, response::Response};
 
 /// Middleware de métricas de rendimiento (sin overhead significativo)
 pub async fn performance_metrics(req: Request, next: Next) -> Response {
     let start = std::time::Instant::now();
     let method = req.method().clone();
     let uri = req.uri().clone();
-    
+
     let response = next.run(req).await;
-    
+
     let elapsed = start.elapsed();
-    
+
     // Solo loguear requests lentos (>100ms)
     if elapsed.as_millis() > 100 {
         tracing::warn!(
@@ -36,6 +32,6 @@ pub async fn performance_metrics(req: Request, next: Next) -> Response {
             "Slow request detected"
         );
     }
-    
+
     response
 }

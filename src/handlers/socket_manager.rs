@@ -18,7 +18,7 @@ use crate::services::socket_service::get_socket_service;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectedUser {
     pub identificador: String,
-    pub user_id: i32,  // Cambiado de i64 a i32 para consistencia
+    pub user_id: i32, // Cambiado de i64 a i32 para consistencia
     pub nombre: Option<String>,
 }
 
@@ -55,7 +55,7 @@ async fn handle_socket(mut socket: WebSocket) {
     tracing::info!("🔌 Nuevo cliente conectado: {}", socket_id);
 
     let socket_service = get_socket_service();
-    
+
     // Estado local para rastrear el usuario conectado
     let current_user: Arc<RwLock<Option<i32>>> = Arc::new(RwLock::new(None));
 
@@ -63,7 +63,7 @@ async fn handle_socket(mut socket: WebSocket) {
     while let Some(Ok(msg)) = socket.recv().await {
         if let Message::Text(text) = msg {
             tracing::debug!("📨 Mensaje recibido: {}", text);
-            
+
             // Intentar parsear el evento
             match serde_json::from_str::<SocketEvent>(&text) {
                 Ok(event) => {
@@ -81,9 +81,11 @@ async fn handle_socket(mut socket: WebSocket) {
 
     // Limpiar la conexión
     if let Some(user_id) = *current_user.read().await {
-        socket_service.remove_connection(user_id as i64, &socket_id).await;
+        socket_service
+            .remove_connection(user_id as i64, &socket_id)
+            .await;
     }
-    
+
     tracing::info!("🔌 Cliente desconectado: {}", socket_id);
 }
 
@@ -97,24 +99,36 @@ async fn handle_socket_event(
 ) {
     match event {
         SocketEvent::UserConnected(user) => {
-            tracing::info!("👤 Usuario conectado: {} (ID: {})", user.identificador, user.user_id);
+            tracing::info!(
+                "👤 Usuario conectado: {} (ID: {})",
+                user.identificador,
+                user.user_id
+            );
             socket_service
                 .add_connection(user.user_id as i64, socket_id)
                 .await;
-            
+
             // Guardar el user_id actual
             *current_user.write().await = Some(user.user_id);
         }
         SocketEvent::JoinNotifications { user_id } => {
             let room_name = format!("user_{}", user_id);
-            tracing::info!("👤 Usuario {} se unió a la sala de notificaciones: {}", user_id, room_name);
-            
+            tracing::info!(
+                "👤 Usuario {} se unió a la sala de notificaciones: {}",
+                user_id,
+                room_name
+            );
+
             // En una implementación completa, aquí se manejarían las "rooms"
             // Por ahora solo registramos la acción
         }
         SocketEvent::LeaveNotifications { user_id } => {
             let room_name = format!("user_{}", user_id);
-            tracing::info!("👤 Usuario {} salió de la sala de notificaciones: {}", user_id, room_name);
+            tracing::info!(
+                "👤 Usuario {} salió de la sala de notificaciones: {}",
+                user_id,
+                room_name
+            );
         }
         SocketEvent::GetNotificationStatus { user_id } => {
             let connection_info = socket_service.get_connection_info().await;
@@ -123,11 +137,11 @@ async fn handle_socket_event(
                 user_id,
                 connection_info.connected_users
             );
-            
+
             // En una implementación completa, aquí se enviaría la respuesta al cliente
             let user_room = format!("user_{}", user_id);
             let user_is_in_room = connection_info.rooms.iter().any(|r| r == &user_room);
-            
+
             let _response = json!({
                 "event": "notification_status",
                 "data": {
@@ -144,7 +158,7 @@ async fn handle_socket_event(
                 "📊 Solicitud de usuarios conectados: {} usuarios activos",
                 connection_info.connected_users
             );
-            
+
             // En una implementación completa, aquí se enviaría la lista de usuarios conectados
             let _response = json!({
                 "event": "usuarios_conectados",

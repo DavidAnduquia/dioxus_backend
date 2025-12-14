@@ -40,9 +40,15 @@ pub async fn obtener_tema(
     Path(id): Path<i32>,
 ) -> Result<Json<TemaModel>, AppError> {
     let service = TemaService::from_ref(&state);
-    match service.obtener_tema_por_id(id).await.map_err(AppError::from)? {
+    match service
+        .obtener_tema_por_id(id)
+        .await
+        .map_err(AppError::from)?
+    {
         Some(tema) => Ok(Json(tema)),
-        None => Err(AppError::NotFound(format!("Tema {} no encontrado", id).into())),
+        None => Err(AppError::NotFound(
+            format!("Tema {} no encontrado", id).into(),
+        )),
     }
 }
 

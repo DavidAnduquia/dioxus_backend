@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "usuarios")]
@@ -8,7 +8,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
     pub id: i32,
     pub nombre: String,
-    pub documento_nit: Option<String>,
+    pub documento_nit: String,
     #[sea_orm(unique)]
     pub correo: String,
     #[serde(skip_serializing)]
@@ -18,14 +18,16 @@ pub struct Model {
     pub semestre: Option<i32>,
     pub genero: String,
     pub fecha_nacimiento: Date,
-    pub estado: Option<bool>,
+    pub estado: bool,
     #[sea_orm(column_name = "fecha_creacion")]
-    pub fecha_creacion: Option<DateTime<Utc>>,
+    pub fecha_creacion: DateTime<Utc>,
     #[sea_orm(column_name = "fecha_actualizacion")]
-    pub fecha_actualizacion: Option<DateTime<Utc>>,
+    pub fecha_actualizacion: DateTime<Utc>,
     #[sea_orm(column_name = "fecha_ultima_conexion")]
-    pub fecha_ultima_conexion: Option<DateTime<Utc>>,
+    pub fecha_ultima_conexion: DateTime<Utc>,
     pub token_primer_ingreso: Option<DateTime<Utc>>,
+    #[sea_orm(column_name = "fecha_eliminacion")]
+    pub fecha_eliminacion: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -38,12 +40,12 @@ pub struct UsuarioConRol {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewUsuario {
     pub nombre: String,
-    pub documento_nit: Option<String>,
+    pub documento_nit: String,
     pub correo: String,
     pub contrasena: String,
     pub foto_url: Option<String>,
     pub rol_id: i32,
-    pub estado: Option<bool>,
+    pub estado: bool,
     pub semestre: Option<i32>,
     pub genero: String,
     pub fecha_nacimiento: String,
@@ -77,3 +79,9 @@ impl Related<super::rol::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl crate::database::migrator::AutoMigrate for Entity {
+    fn entity_name() -> &'static str {
+        "usuarios"
+    }
+}

@@ -44,7 +44,7 @@ fn serialize_notificacion(n: &crate::models::notificacion::Model) -> Value {
 
 /// Obtener notificaciones de un usuario
 pub async fn obtener_notificaciones_usuario(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(usuario_id): Path<i64>,
     Query(params): Query<NotificacionesQuery>,
@@ -59,10 +59,8 @@ pub async fn obtener_notificaciones_usuario(
         .obtener_por_usuario(usuario_id_i32, params.leida, params.limit, params.offset)
         .await?;
 
-    let notificaciones_json: Vec<Value> = notificaciones
-        .iter()
-        .map(serialize_notificacion)
-        .collect();
+    let notificaciones_json: Vec<Value> =
+        notificaciones.iter().map(serialize_notificacion).collect();
 
     Ok(Json(NotificacionesResponse {
         notificaciones: notificaciones_json,
@@ -72,7 +70,7 @@ pub async fn obtener_notificaciones_usuario(
 
 /// Marcar notificación como leída
 pub async fn marcar_notificacion_leida(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<Value>, AppError> {
@@ -85,7 +83,7 @@ pub async fn marcar_notificacion_leida(
 
 /// Crear nueva notificación
 pub async fn crear_notificacion(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<NuevaNotificacion>,
 ) -> Result<(StatusCode, Json<Value>), AppError> {
@@ -101,7 +99,7 @@ pub async fn crear_notificacion(
 
 /// Marcar todas las notificaciones de un usuario como leídas
 pub async fn marcar_todas_leidas(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(usuario_id): Path<i64>,
 ) -> Result<Json<Value>, AppError> {

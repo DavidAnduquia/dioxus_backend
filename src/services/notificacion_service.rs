@@ -1,8 +1,8 @@
 use axum::extract::FromRef;
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set,
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, Set,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -23,7 +23,10 @@ pub struct NotificacionService {
 
 impl FromRef<AppState> for NotificacionService {
     fn from_ref(state: &AppState) -> Self {
-        let executor = state.db.clone().expect("Database connection is not available");
+        let executor = state
+            .db
+            .clone()
+            .expect("Database connection is not available");
         NotificacionService::new(executor)
     }
 }
@@ -38,7 +41,6 @@ pub struct NuevaNotificacion {
     pub enlace: Option<String>,
     pub datos_adicionales: Option<Value>,
 }
-
 
 impl NotificacionService {
     pub fn new(db: DbExecutor) -> Self {
@@ -84,7 +86,6 @@ impl NotificacionService {
         Ok(notificacion_creada)
     }
 
-
     pub async fn obtener_por_usuario(
         &self,
         usuario_id: i32,
@@ -92,8 +93,7 @@ impl NotificacionService {
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Result<(Vec<NotificacionModel>, u64), AppError> {
-        let mut query = Notificacion::find()
-            .filter(notificacion::Column::UsuarioId.eq(usuario_id));
+        let mut query = Notificacion::find().filter(notificacion::Column::UsuarioId.eq(usuario_id));
 
         if let Some(leida_val) = leida {
             query = query.filter(notificacion::Column::Leida.eq(leida_val));
@@ -117,10 +117,7 @@ impl NotificacionService {
         Ok((notificaciones, total))
     }
 
-    pub async fn marcar_como_leida(
-        &self,
-        id: i32,
-    ) -> Result<NotificacionModel, AppError> {
+    pub async fn marcar_como_leida(&self, id: i32) -> Result<NotificacionModel, AppError> {
         let notificacion = Notificacion::find_by_id(id)
             .one(&self.db.connection())
             .await?
@@ -134,10 +131,7 @@ impl NotificacionService {
         Ok(notificacion_actualizada)
     }
 
-    pub async fn marcar_todas_como_leidas(
-        &self,
-        usuario_id: i32,
-    ) -> Result<u64, AppError> {
+    pub async fn marcar_todas_como_leidas(&self, usuario_id: i32) -> Result<u64, AppError> {
         // Obtener todas las notificaciones no leídas del usuario
         let notificaciones = Notificacion::find()
             .filter(notificacion::Column::UsuarioId.eq(usuario_id))
@@ -208,10 +202,7 @@ impl NotificacionService {
     }
 
     #[allow(dead_code)]
-    pub async fn obtener_estadisticas(
-        &self,
-        usuario_id: i32,
-    ) -> Result<(u64, u64, u64), AppError> {
+    pub async fn obtener_estadisticas(&self, usuario_id: i32) -> Result<(u64, u64, u64), AppError> {
         let total = Notificacion::find()
             .filter(notificacion::Column::UsuarioId.eq(usuario_id))
             .count(&self.db.connection())

@@ -1,9 +1,6 @@
 use axum::{
     extract::FromRequestParts,
-    http::{StatusCode, request::Parts},
-    middleware::Next,
-    response::Response,
-    body::Body,
+    http::request::Parts,
 };
 use jsonwebtoken::{decode, Validation};
 
@@ -12,9 +9,9 @@ use crate::{
     utils::errors::AppError,
 };
 
-#[derive(Debug, Clone)] 
+#[derive(Debug, Clone)]
 pub struct AuthUser {
-    pub user_id: i32,  // Cambiado de Uuid a i32
+    pub user_id: i32, // Cambiado de Uuid a i32
     pub email: String,
 }
 
@@ -47,53 +44,27 @@ impl FromRequestParts<AppState> for AuthUser {
         .map_err(|_| AppError::Unauthorized("Invalid token".into()))?
         .claims;
 
-        let user_id = claims.sub.parse::<i32>()
+        let user_id = claims
+            .sub
+            .parse::<i32>()
             .map_err(|_| AppError::Unauthorized("Invalid user ID in token".into()))?;
 
         let email = claims.email;
         if email.trim().is_empty() {
-            return Err(AppError::Unauthorized("Email claim missing in token".into()));
+            return Err(AppError::Unauthorized(
+                "Email claim missing in token".into(),
+            ));
         }
 
-        let auth_user = AuthUser {
-            user_id,
-            email,
-        };
+        let auth_user = AuthUser { user_id, email };
 
-        // Registrar el correo para evitar advertencias y facilitar el debugging
-        tracing::trace!("Authenticated user email: {}", auth_user.email);
+        // Registrar el usuario autenticado para trazas y futuras autorizaciones
+        tracing::trace!(
+            "Authenticated user {} ({})",
+            auth_user.user_id,
+            auth_user.email
+        );
 
         Ok(auth_user)
     }
-}
-
-// Middleware eficiente que valida presencia básica del token JWT
-// Sin buffers innecesarios - validación completa se hace en handlers con AuthUser
-pub async fn jwt_auth_middleware(
-    req: axum::http::Request<Body>,
-    next: Next,
-) -> Response {
-    let auth_header = req
-        .headers()
-        .get("Authorization")
-        .and_then(|header| header.to_str().ok());
-
-    // Validación básica: header presente y con formato Bearer
-    let is_valid_format = match auth_header {
-        Some(header) if header.starts_with("Bearer ") => {
-            let token = &header[7..];
-            !token.is_empty() && token.len() > 10 // Token básico presente
-        }
-        _ => false,
-    };
-
-    if !is_valid_format {
-        return Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .header("content-type", "application/json")
-            .body(Body::from(r#"{"error":"Unauthorized","message":"Valid JWT token required"}"#))
-            .unwrap();
-    }
-
-    next.run(req).await
 }

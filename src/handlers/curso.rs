@@ -7,16 +7,9 @@ use serde::Deserialize;
 
 use crate::{
     middleware::auth::AuthUser,
-    models::{
-        curso::Model as CursoModel,
-        AppState,
-    },
+    models::{curso::Model as CursoModel, AppState},
     services::curso_service::{
-        ActualizarCurso,
-        AulaCurso,
-        CursoDetallado,
-        CursoService,
-        NuevoCurso,
+        ActualizarCurso, AulaCurso, CursoDetallado, CursoService, NuevoCurso,
     },
     utils::errors::AppError,
 };
@@ -27,7 +20,7 @@ pub struct CursoPeriodoQuery {
 }
 
 pub async fn listar_cursos(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
 ) -> Result<Json<Vec<CursoDetallado>>, AppError> {
     let service = CursoService::from_ref(&state);
@@ -36,7 +29,7 @@ pub async fn listar_cursos(
 }
 
 pub async fn obtener_curso(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<CursoDetallado>, AppError> {
@@ -46,7 +39,7 @@ pub async fn obtener_curso(
 }
 
 pub async fn crear_curso(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Json(payload): Json<NuevoCurso>,
 ) -> Result<(StatusCode, Json<CursoModel>), AppError> {
@@ -56,7 +49,7 @@ pub async fn crear_curso(
 }
 
 pub async fn actualizar_curso(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<ActualizarCurso>,
@@ -67,7 +60,7 @@ pub async fn actualizar_curso(
 }
 
 pub async fn eliminar_curso(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<StatusCode, AppError> {
@@ -77,7 +70,7 @@ pub async fn eliminar_curso(
 }
 
 pub async fn cursos_por_plantilla(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(plantilla_id): Path<i32>,
 ) -> Result<Json<Vec<CursoModel>>, AppError> {
@@ -87,7 +80,7 @@ pub async fn cursos_por_plantilla(
 }
 
 pub async fn cursos_por_area_y_periodo(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(area_id): Path<i32>,
     Query(params): Query<CursoPeriodoQuery>,
@@ -100,7 +93,7 @@ pub async fn cursos_por_area_y_periodo(
 }
 
 pub async fn aula_por_curso(
-    _auth_user: AuthUser,  // Validar JWT automáticamente
+    _auth_user: AuthUser, // Validar JWT automáticamente
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Json<AulaCurso>, AppError> {

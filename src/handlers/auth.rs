@@ -6,9 +6,7 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::{
-    models::{
-        ApiResponse, AppState, AuthResponse, Claims, CreateUserRequest, LoginRequest, User,
-    },
+    models::{ApiResponse, AppState, AuthResponse, Claims, CreateUserRequest, LoginRequest, User},
     utils::errors::AppError,
 };
 
@@ -33,12 +31,10 @@ pub async fn register(
     let db = state.get_db()?;
 
     // Check if user already exists
-    let user_exists: Option<i32> = sqlx::query_scalar(
-        "SELECT 1 FROM usuarios WHERE correo = $1"
-    )
-    .bind(&payload.email)
-    .fetch_optional(db)
-    .await?;
+    let user_exists: Option<i32> = sqlx::query_scalar("SELECT 1 FROM usuarios WHERE correo = $1")
+        .bind(&payload.email)
+        .fetch_optional(db)
+        .await?;
 
     if user_exists.is_some() {
         return Err(AppError::BadRequest("User already exists".into()));
@@ -99,7 +95,7 @@ pub async fn login(
     if !db_available && payload.email == "test@example.com" && payload.password == "admin123" {
         // Crear usuario de testing
         let test_user = User {
-            id: 999999,  // ID de testing como i32
+            id: 999999, // ID de testing como i32
             email: payload.email.clone(),
             password_hash: "hashed_test_password".to_string(),
             name: "Test User".to_string(),
@@ -153,7 +149,10 @@ pub async fn login(
     Ok(Json(ApiResponse::success(response)))
 }
 
-fn generate_token(user: &User, encoding_key: &jsonwebtoken::EncodingKey) -> Result<String, AppError> {
+fn generate_token(
+    user: &User,
+    encoding_key: &jsonwebtoken::EncodingKey,
+) -> Result<String, AppError> {
     use chrono::Utc;
     use jsonwebtoken::{encode, Header};
 
@@ -162,7 +161,7 @@ fn generate_token(user: &User, encoding_key: &jsonwebtoken::EncodingKey) -> Resu
     let iat = now.timestamp() as usize;
 
     let claims = Claims {
-        sub: user.id.to_string(),  // Convertir i32 a String
+        sub: user.id.to_string(), // Convertir i32 a String
         email: user.email.clone(),
         exp,
         iat,
@@ -217,7 +216,9 @@ pub async fn validate_token(
     .claims;
 
     // Convertir user_id de string a i32
-    let user_id = claims.sub.parse::<i32>()
+    let user_id = claims
+        .sub
+        .parse::<i32>()
         .map_err(|_| AppError::Unauthorized("ID de usuario inválido en token".into()))?;
 
     let email = claims.email.clone();

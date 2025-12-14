@@ -1,8 +1,5 @@
 use aws_sdk_s3::{
-    presigning::PresigningConfig,
-    Client,
-    primitives::ByteStream,
-    config::Credentials,
+    config::Credentials, presigning::PresigningConfig, primitives::ByteStream, Client,
 };
 use axum::body::Bytes;
 use std::time::Duration;
@@ -20,20 +17,32 @@ pub enum StorageError {
     StorageError(String),
 }
 
-impl From<aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::put_object::PutObjectError>> for StorageError {
-    fn from(err: aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::put_object::PutObjectError>) -> Self {
+impl From<aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::put_object::PutObjectError>>
+    for StorageError
+{
+    fn from(
+        err: aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::put_object::PutObjectError>,
+    ) -> Self {
         StorageError::StorageError(format!("S3 put object error: {}", err))
     }
 }
 
-impl From<aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::get_object::GetObjectError>> for StorageError {
-    fn from(err: aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::get_object::GetObjectError>) -> Self {
+impl From<aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::get_object::GetObjectError>>
+    for StorageError
+{
+    fn from(
+        err: aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::get_object::GetObjectError>,
+    ) -> Self {
         StorageError::StorageError(format!("S3 get object error: {}", err))
     }
 }
 
-impl From<aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::delete_object::DeleteObjectError>> for StorageError {
-    fn from(err: aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::delete_object::DeleteObjectError>) -> Self {
+impl From<aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::delete_object::DeleteObjectError>>
+    for StorageError
+{
+    fn from(
+        err: aws_sdk_s3::error::SdkError<aws_sdk_s3::operation::delete_object::DeleteObjectError>,
+    ) -> Self {
         StorageError::StorageError(format!("S3 delete object error: {}", err))
     }
 }
@@ -58,15 +67,13 @@ impl StorageService {
         // Configuración hardcoded para coincidir con el frontend React
         let config = aws_config::from_env()
             .region("auto") // Cloudflare R2 uses 'auto' region
-            .credentials_provider(
-                Credentials::new(
-                    "94693ac7f6b38fa08f74fc9833f14fe2", // NEW Access Key ID
-                    "ec37cebc510f3de5d59992e497d9870c1d6c59295d2a1c7e891d630a79ec17dc", // NEW Secret Access Key
-                    None,
-                    None,
-                    "aulatrix-r2-token-new"
-                )
-            )
+            .credentials_provider(Credentials::new(
+                "94693ac7f6b38fa08f74fc9833f14fe2", // NEW Access Key ID
+                "ec37cebc510f3de5d59992e497d9870c1d6c59295d2a1c7e891d630a79ec17dc", // NEW Secret Access Key
+                None,
+                None,
+                "aulatrix-r2-token-new",
+            ))
             .load()
             .await;
 
@@ -115,19 +122,31 @@ impl StorageService {
         content_type: String,
         bytes: Bytes,
     ) -> Result<String, StorageError> {
-        tracing::info!("🔄 [STORAGE] Iniciando subida de archivo: {} (tipo: {}, tamaño: {} bytes)", file_name, content_type, bytes.len());
+        tracing::info!(
+            "🔄 [STORAGE] Iniciando subida de archivo: {} (tipo: {}, tamaño: {} bytes)",
+            file_name,
+            content_type,
+            bytes.len()
+        );
         tracing::info!("📦 [STORAGE] Bucket configurado: {}", self.bucket);
 
         // Validar tamaño del archivo
         if bytes.len() as u64 > MAX_FILE_SIZE {
-            tracing::error!("❌ [STORAGE] Archivo demasiado grande: {} bytes (máximo: {} bytes)", bytes.len(), MAX_FILE_SIZE);
+            tracing::error!(
+                "❌ [STORAGE] Archivo demasiado grande: {} bytes (máximo: {} bytes)",
+                bytes.len(),
+                MAX_FILE_SIZE
+            );
             return Err(StorageError::FileTooLarge);
         }
         tracing::info!("✅ [STORAGE] Validación de tamaño: OK");
 
         // Validar tipo de archivo (opcional)
         if !is_allowed_content_type(&content_type) {
-            tracing::error!("❌ [STORAGE] Tipo de archivo no permitido: {}", content_type);
+            tracing::error!(
+                "❌ [STORAGE] Tipo de archivo no permitido: {}",
+                content_type
+            );
             return Err(StorageError::InvalidFileType);
         }
         tracing::info!("✅ [STORAGE] Validación de tipo de archivo: OK");
@@ -136,7 +155,8 @@ impl StorageService {
         tracing::info!("📋 [STORAGE] ByteStream creado correctamente");
 
         tracing::info!("🚀 [STORAGE] Enviando petición PUT a R2...");
-        let result = self.client
+        let result = self
+            .client
             .put_object()
             .bucket(&self.bucket)
             .key(&file_name)
@@ -147,7 +167,10 @@ impl StorageService {
 
         match result {
             Ok(_) => {
-                tracing::info!("✅ [STORAGE] Archivo subido exitosamente a R2: {}", file_name);
+                tracing::info!(
+                    "✅ [STORAGE] Archivo subido exitosamente a R2: {}",
+                    file_name
+                );
                 Ok(file_name)
             }
             Err(e) => {
@@ -159,10 +182,7 @@ impl StorageService {
     }
 
     /// Obtiene una URL pre-firmada para descargar archivos
-    pub async fn generate_download_url(
-        &self,
-        file_name: &str,
-    ) -> Result<String, StorageError> {
+    pub async fn generate_download_url(&self, file_name: &str) -> Result<String, StorageError> {
         let expires_in = Duration::from_secs(3600); // 1 hora de validez
 
         let presigned_request = self

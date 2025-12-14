@@ -1,11 +1,14 @@
-use axum::extract::FromRef;
-use chrono::{DateTime, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set, Order};
 use crate::{
     database::DbExecutor,
     models::modulo::{self, Entity as Modulo, Model as ModuloModel},
     models::AppState,
     utils::errors::AppError,
+};
+use axum::extract::FromRef;
+use chrono::{DateTime, Utc};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, Order,
+    QueryFilter, QueryOrder, Set,
 };
 use serde::{Deserialize, Serialize};
 
@@ -46,15 +49,11 @@ impl ModuloService {
         Self { db }
     }
 
-
     fn connection(&self) -> DatabaseConnection {
         self.db.connection()
     }
 
-    pub async fn crear_modulo(
-        &self,
-        nuevo_modulo: NuevoModulo,
-    ) -> Result<ModuloModel, AppError> {
+    pub async fn crear_modulo(&self, nuevo_modulo: NuevoModulo) -> Result<ModuloModel, AppError> {
         if nuevo_modulo.nombre.trim().is_empty() {
             return Err(AppError::BadRequest("El nombre es obligatorio".into()));
         }
@@ -66,7 +65,9 @@ impl ModuloService {
             nombre: Set(nuevo_modulo.nombre),
             descripcion: Set(nuevo_modulo.descripcion),
             orden: Set(nuevo_modulo.orden),
-            tipo: Set(nuevo_modulo.tipo.unwrap_or_else(|| "estructura_contenido".to_string())),
+            tipo: Set(nuevo_modulo
+                .tipo
+                .unwrap_or_else(|| "estructura_contenido".to_string())),
             visible: Set(nuevo_modulo.visible),
             fecha_inicio: Set(nuevo_modulo.fecha_inicio),
             fecha_fin: Set(nuevo_modulo.fecha_fin),
@@ -91,10 +92,7 @@ impl ModuloService {
             .await
     }
 
-    pub async fn obtener_modulo_por_id(
-        &self,
-        id: i32,
-    ) -> Result<Option<ModuloModel>, DbErr> {
+    pub async fn obtener_modulo_por_id(&self, id: i32) -> Result<Option<ModuloModel>, DbErr> {
         let db = self.connection();
         Modulo::find_by_id(id).one(&db).await
     }
@@ -114,7 +112,9 @@ impl ModuloService {
 
         if let Some(nombre) = datos_actualizados.nombre {
             if nombre.trim().is_empty() {
-                return Err(AppError::BadRequest("El nombre no puede estar vacío".into()));
+                return Err(AppError::BadRequest(
+                    "El nombre no puede estar vacío".into(),
+                ));
             }
             modulo.nombre = Set(nombre);
         }
@@ -170,7 +170,10 @@ impl ModuloService {
 
 impl FromRef<AppState> for ModuloService {
     fn from_ref(state: &AppState) -> Self {
-        let executor = state.db.clone().expect("Database connection is not available");
+        let executor = state
+            .db
+            .clone()
+            .expect("Database connection is not available");
         ModuloService::new(executor)
     }
 }
