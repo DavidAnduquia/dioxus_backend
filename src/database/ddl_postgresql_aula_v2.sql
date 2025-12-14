@@ -1,3 +1,10 @@
+-- =============================================
+-- DDL PostgreSQL - Aula Virtual (VERSIÓN v2)
+-- Archivo fuente: ddl_postgresql_aula_v2.sql
+-- Schema objetivo: rustdema2
+-- Nota: Este archivo ya incluye soft delete vía fecha_eliminacion donde aplica.
+-- =============================================
+
 -- rustdema2.areas_conocimiento definition
 
 -- Drop table

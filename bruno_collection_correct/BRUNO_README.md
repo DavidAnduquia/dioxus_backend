@@ -134,7 +134,7 @@ if (responseData.success && responseData.data.token) {
 
 ## 🔧 **CONFIGURACIÓN TÉCNICA**
 
-- **Base URL**: `http://localhost:3030`
+- **Base URL**: `http://localhost:3000`
 - **Autenticación**: JWT Bearer Token
 - **Content-Type**: `application/json`
 - **Variables**: Todas manejadas automáticamente
@@ -144,11 +144,11 @@ if (responseData.success && responseData.data.token) {
 ### **Error 401 Unauthorized:**
 - ✅ Asegúrate de ejecutar "Auth/Login User" primero
 - ✅ Verifica que JWT_TOKEN se guardó en consola
-- ✅ Confirma que el servidor esté ejecutándose en puerto 3030
+- ✅ Confirma que el servidor esté ejecutándose en puerto 3000
 
 ### **Error de conexión:**
-- ✅ Verifica que el servidor esté ejecutándose: `cargo run --release`
-- ✅ Confirma BASE_URL: `http://localhost:3030`
+- ✅ Verifica que el servidor esté ejecutándose: `cargo run`
+- ✅ Confirma BASE_URL: `http://localhost:3000`
 - ✅ Revisa logs del servidor para errores
 
 ### **Token expirado:**

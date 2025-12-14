@@ -1,11 +1,12 @@
 # Rust REST API Backend
 
-Un backend REST API moderno construido con Rust, Axum y PostgreSQL.
+Backend REST API construido con Rust, Axum y PostgreSQL.
 
 ## Características
 
-- 🚀 **Framework Web**: Axum para alto rendimiento
-- 🗄️ **Base de Datos**: PostgreSQL con SQLx
+- 🚀 **Framework Web**: Axum
+- 🗄️ **Base de Datos**: PostgreSQL
+- 🧩 **Acceso a datos**: SeaORM (y SQLx en rutas puntuales)
 - 🔐 **Autenticación**: JWT tokens con bcrypt
 - ✅ **Validación**: Validación de entrada con validator
 - 📝 **Logging**: Structured logging con tracing
@@ -21,12 +22,12 @@ src/
 ├── config/              # Configuración de la aplicación
 ├── database/            # Configuración y migraciones de BD
 ├── handlers/            # Controladores de rutas
-│   ├── auth.rs         # Autenticación (login/register)
-│   ├── users.rs        # Gestión de usuarios
-│   └── posts.rs        # CRUD de posts (ejemplo)
+│   ├── auth.rs         # Autenticación
+│   ├── usuarios.rs     # Gestión de usuarios
+│   └── ...
 ├── middleware/          # Middleware personalizado
 │   └── auth.rs         # Middleware de autenticación
-├── models/             # Modelos de datos y DTOs
+├── models/             # Modelos (entidades SeaORM) + DTOs integrados por entidad
 ├── routes/             # Definición de rutas
 └── utils/              # Utilidades y manejo de errores
 ```
@@ -54,8 +55,11 @@ src/
 ## Ejecutar el Proyecto
 
 ```bash
-# Instalar dependencias y ejecutar
+# Ejecutar
 cargo run
+
+# Validar compilación
+cargo check
 
 # Para desarrollo con auto-reload
 cargo install cargo-watch
@@ -67,19 +71,26 @@ cargo watch -x run
 ### Autenticación
 - `POST /auth/register` - Registrar nuevo usuario
 - `POST /auth/login` - Iniciar sesión
+- `POST /auth/validate-token` - Validar token
+- `POST /auth/token` - OAuth2 (password grant)
 
 ### Usuarios
-- `GET /users/me` - Obtener perfil del usuario actual (requiere auth)
+- `GET /api/usuarios` - Listar usuarios
+- `POST /api/usuarios` - Crear usuario
+- `GET /api/usuarios/{id}` - Obtener usuario
+- `PUT /api/usuarios/{id}` - Actualizar usuario
+- `POST /api/usuario/login` - Login alternativo
+- `POST /api/usuario/logout/{id}` - Logout
 
-### Posts (Ejemplo)
-- `GET /posts` - Listar posts (con paginación)
-- `POST /posts` - Crear post (requiere auth)
-- `GET /posts/:id` - Obtener post específico
-- `PUT /posts/:id` - Actualizar post (requiere auth)
-- `DELETE /posts/:id` - Eliminar post (requiere auth)
+### Swagger / Docs / WS
+- `GET /swagger-ui` - Swagger UI
+- `GET /api-docs/openapi.json` - Spec OpenAPI
+- `GET /ws` - WebSocket
 
 ### Utilidad
 - `GET /health` - Health check
+- `GET /ready` - Readiness
+- `GET /live` - Liveness
 
 ## Ejemplos de Uso
 
@@ -104,24 +115,12 @@ curl -X POST http://localhost:3000/auth/login \
   }'
 ```
 
-### Crear Post (con autenticación)
-```bash
-curl -X POST http://localhost:3000/posts \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{
-    "title": "Mi primer post",
-    "content": "Contenido del post...",
-    "published": true
-  }'
-```
-
 ## Desarrollo
 
 ### Agregar Nuevas Entidades
 
 1. **Modelo**: Agregar en `src/models/mod.rs`
-2. **Migración**: Actualizar `src/database/mod.rs`
+2. **Migración/DDL**: Revisar `src/database/` (DDL/migrator/seeder)
 3. **Handlers**: Crear en `src/handlers/`
 4. **Rutas**: Agregar en `src/routes/mod.rs`
 
