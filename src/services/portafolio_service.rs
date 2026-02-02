@@ -1,8 +1,6 @@
-use chrono::Utc;
 use once_cell::sync::OnceCell;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
-    ModelTrait, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, QueryFilter, Set,
 };
 use std::sync::Arc;
 
@@ -35,29 +33,15 @@ impl PortafolioService {
         nuevo_portafolio: NuevoPortafolio,
     ) -> Result<PortafolioModel, AppError> {
         // Validar campos obligatorios
-        if nuevo_portafolio.titulo.trim().is_empty() {
+        if nuevo_portafolio.nombre.trim().is_empty() {
             return Err(AppError::BadRequest(
-                "El título del portafolio es obligatorio".into(),
+                "El nombre del portafolio es obligatorio".into(),
             ));
         }
-
-        if nuevo_portafolio.estado.trim().is_empty() {
-            return Err(AppError::BadRequest(
-                "El estado del portafolio es obligatorio".into(),
-            ));
-        }
-
-        let ahora = Utc::now();
         let portafolio = portafolio::ActiveModel {
-            estudiante_id: Set(nuevo_portafolio.estudiante_id),
             curso_id: Set(nuevo_portafolio.curso_id),
-            titulo: Set(nuevo_portafolio.titulo),
+            nombre: Set(nuevo_portafolio.nombre),
             descripcion: Set(nuevo_portafolio.descripcion),
-            estado: Set(nuevo_portafolio.estado),
-            fecha_creacion: Set(ahora),
-            fecha_actualizacion: Set(ahora),
-            created_at: Set(Some(ahora)),
-            updated_at: Set(Some(ahora)),
             ..Default::default()
         };
 
@@ -73,26 +57,13 @@ impl PortafolioService {
         Portafolio::find_by_id(id).one(&self.db).await
     }
 
-    // Obtener portafolios por estudiante
-    pub async fn obtener_portafolios_por_estudiante(
-        &self,
-        estudiante_id: i64,
-    ) -> Result<Vec<PortafolioModel>, DbErr> {
-        Portafolio::find()
-            .filter(portafolio::Column::EstudianteId.eq(estudiante_id))
-            .order_by_desc(portafolio::Column::FechaActualizacion)
-            .all(&self.db)
-            .await
-    }
-
     // Obtener portafolios por curso
     pub async fn obtener_portafolios_por_curso(
         &self,
         curso_id: i32,
     ) -> Result<Vec<PortafolioModel>, DbErr> {
         Portafolio::find()
-            .filter(portafolio::Column::CursoId.eq(curso_id))
-            .order_by_desc(portafolio::Column::FechaActualizacion)
+            .filter(portafolio::Column::CursoId.eq(Some(curso_id)))
             .all(&self.db)
             .await
     }
@@ -109,32 +80,19 @@ impl PortafolioService {
             .ok_or_else(|| AppError::NotFound("Portafolio no encontrado".into()))?;
 
         let mut portafolio: portafolio::ActiveModel = portafolio.into();
-        let ahora = Utc::now();
 
-        if let Some(titulo) = datos_actualizados.titulo {
-            if titulo.trim().is_empty() {
+        if let Some(nombre) = datos_actualizados.nombre {
+            if nombre.trim().is_empty() {
                 return Err(AppError::BadRequest(
-                    "El título del portafolio no puede estar vacío".into(),
+                    "El nombre del portafolio no puede estar vacío".into(),
                 ));
             }
-            portafolio.titulo = Set(titulo);
+            portafolio.nombre = Set(nombre);
         }
 
         if let Some(descripcion) = datos_actualizados.descripcion {
             portafolio.descripcion = Set(Some(descripcion));
         }
-
-        if let Some(estado) = datos_actualizados.estado {
-            if estado.trim().is_empty() {
-                return Err(AppError::BadRequest(
-                    "El estado del portafolio no puede estar vacío".into(),
-                ));
-            }
-            portafolio.estado = Set(estado);
-        }
-
-        portafolio.fecha_actualizacion = Set(ahora);
-        portafolio.updated_at = Set(Some(ahora));
 
         let portafolio_actualizado = portafolio.update(&self.db).await?;
         Ok(portafolio_actualizado)

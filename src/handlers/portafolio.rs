@@ -55,7 +55,7 @@ fn get_db_connection(state: &AppState) -> Result<sea_orm::DatabaseConnection, Ap
 
 async fn get_or_create_portafolio(
     curso_id: i32,
-    auth_user: &AuthUser,
+    _auth_user: &AuthUser,
     state: &AppState,
 ) -> Result<PortafolioModel, AppError> {
     let db = get_db_connection(state)?;
@@ -73,11 +73,9 @@ async fn get_or_create_portafolio(
 
     // Crear un portafolio básico para el curso
     let nuevo = NuevoPortafolio {
-        estudiante_id: auth_user.user_id as i64,
-        curso_id,
-        titulo: format!("Portafolio del curso {}", curso_id),
+        curso_id: Some(curso_id),
+        nombre: format!("Portafolio del curso {}", curso_id),
         descripcion: Some("Portafolio principal del curso".to_string()),
-        estado: "activo".to_string(),
     };
 
     let creado = service.crear_portafolio(nuevo).await?;
