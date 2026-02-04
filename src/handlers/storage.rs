@@ -217,6 +217,27 @@ pub async fn upload_file_direct(
     Ok(Json(response))
 }
 
+/// Descarga un archivo sirviendo como proxy para Cloudflare R2
+pub async fn download_file(
+    _auth_user: AuthUser,
+    axum::extract::Path(file_key): axum::extract::Path<String>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    let storage = StorageService::new().await.map_err(|e| {
+        AppError::InternalServerError(format!("Failed to initialize storage: {}", e).into())
+    })?;
+
+    // Validar que el archivo esté en la carpeta uploads para seguridad
+    if !file_key.starts_with("uploads/") {
+        return Err(AppError::BadRequest("Invalid file key".into()));
+    }
+
+    // Generar URL de descarga pre-firmada
+    let download_url = storage.generate_download_url(&file_key).await?;
+
+    // Redirigir a la URL de Cloudflare R2
+    Ok(axum::response::Redirect::temporary(&download_url))
+}
+
 /// Elimina un archivo
 pub async fn delete_file(
     _auth_user: AuthUser,

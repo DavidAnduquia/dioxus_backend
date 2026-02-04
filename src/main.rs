@@ -15,7 +15,7 @@ mod services;
 mod utils;
 
 use config::Config;
-use database::{seeder, DbExecutor, init_schema};
+use database::{seeder, seed_users, DbExecutor, init_schema};
 use routes::create_app;
 
 #[tokio::main(worker_threads = 2)]
@@ -44,6 +44,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Ejecutar migraciones iniciales para preparar tablas requeridas
             if let Err(e) = seeder::run_migrations(&pool, &config.database_url).await {
                 tracing::error!("❌ Migraciones fallaron: {}", e);
+                return Err(e.into());
+            }
+
+            // Poblar base de datos con usuarios de prueba
+            if let Err(e) = seed_users::seed_users(&pool).await {
+                tracing::error!("❌ Error poblando usuarios: {}", e);
                 return Err(e.into());
             }
 
@@ -96,6 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .allow_origin([
                             "http://localhost:8080".parse().unwrap(), // Frontend Dioxus
                             "http://127.0.0.1:8080".parse().unwrap(), // Frontend alternativo
+                            "http://192.168.1.9".parse().unwrap(),   // Frontend Android en LAN
                         ]) // Orígenes específicos para desarrollo
                         .allow_methods([
                             Method::GET,
@@ -120,7 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(app_state);
 
     // Run the server with graceful shutdown
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
 
     tracing::info!("🚀 Server started on http://{}", addr);
