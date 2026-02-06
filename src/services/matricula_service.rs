@@ -63,8 +63,8 @@ impl MatriculaService {
             curso_id: Set(curso_id),
             fecha_inscripcion: Set(ahora),
             estado: Set("activo".into()),
-            created_at: Set(Some(ahora)),
-            updated_at: Set(Some(ahora)),
+            fecha_creacion: Set(Some(ahora)),
+            fecha_actualizacion: Set(Some(ahora)),
             ..Default::default()
         };
 
@@ -98,7 +98,7 @@ impl MatriculaService {
         let ahora = Utc::now();
         let mut matricula: historial_curso_estudiante::ActiveModel = matricula.into();
         matricula.estado = Set("inactivo".into());
-        matricula.updated_at = Set(Some(ahora));
+        matricula.fecha_actualizacion = Set(Some(ahora));
 
         let matricula_actualizada = matricula.update(&db).await?;
         Ok(matricula_actualizada)

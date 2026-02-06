@@ -37,8 +37,8 @@ impl HistorialCursoEstudianteService {
             estado: Set(nuevo_historial.estado),
             calificacion_final: Set(nuevo_historial.calificacion_final),
             aprobado: Set(nuevo_historial.aprobado),
-            created_at: Set(Some(ahora)),
-            updated_at: Set(Some(ahora)),
+            fecha_creacion: Set(Some(ahora)),
+            fecha_actualizacion: Set(Some(ahora)),
             ..Default::default()
         };
 
@@ -97,7 +97,7 @@ impl HistorialCursoEstudianteService {
             historial.aprobado = Set(aprobado);
         }
 
-        historial.updated_at = Set(Some(ahora));
+        historial.fecha_actualizacion = Set(Some(ahora));
         let historial_actualizado = historial.update(&self.db).await?;
 
         Ok(historial_actualizado)
@@ -207,7 +207,7 @@ impl crate::traits::service::CrudService<HistorialCursoEstudianteModel> for Hist
         historial.estado = Set(data.estado);
         historial.calificacion_final = Set(data.calificacion_final);
         historial.aprobado = Set(data.aprobado);
-        historial.updated_at = Set(Some(ahora));
+        historial.fecha_actualizacion = Set(Some(ahora));
 
         historial.update(&self.db).await
     }

@@ -13,8 +13,8 @@ pub struct Model {
     pub estado: String,
     pub calificacion_final: Option<f64>,
     pub aprobado: bool,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
+    pub fecha_creacion: Option<DateTime<Utc>>,
+    pub fecha_actualizacion: Option<DateTime<Utc>>,
     // Campos adicionales para JOIN con usuario
     #[sea_orm(ignore)]
     pub nombre: Option<String>,
